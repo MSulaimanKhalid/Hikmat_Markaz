@@ -113,7 +113,8 @@ label {
 }
 
 input,
-textarea {
+textarea,
+select {
     width: 100%;
     border: 1px solid #dcd7ce;
     background: white;
@@ -126,9 +127,17 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
     border-color: #2f6d64;
     box-shadow: 0 0 0 4px rgba(47, 109, 100, 0.08);
+}
+
+.field-hint {
+    margin: -4px 0 4px;
+    color: #7d8987;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 button {
@@ -293,6 +302,39 @@ button:hover {
     font-size: 14px;
 }
 
+.doctor-module-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    background: #eef4f3;
+    padding: 6px;
+    border-radius: 18px;
+    margin: 10px 0 18px;
+}
+
+.doctor-module-tab {
+    margin: 0;
+    background: transparent;
+    color: #55706c;
+    border-radius: 13px;
+    padding: 12px 10px;
+}
+
+.doctor-module-tab:hover {
+    transform: none;
+    background: #e3eeeb;
+}
+
+.doctor-module-tab.active {
+    background: white;
+    color: #2f6d64;
+    box-shadow: 0 6px 18px rgba(50, 60, 60, 0.08);
+}
+
+.doctor-module-panel {
+    margin-top: 18px;
+}
+
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -375,6 +417,144 @@ button:hover {
     min-height: 80px;
 }
 
+.doctor-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.settings-card,
+.settings-list-card,
+.settings-complete-panel {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.settings-card h3,
+.settings-list-card h3,
+.settings-complete-panel h3 {
+    margin: 0 0 14px;
+    color: #1f2b2a;
+    font-size: 18px;
+}
+
+.schedule-days-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    background: white;
+    border: 1px solid #dcd7ce;
+    border-radius: 16px;
+    padding: 12px;
+}
+
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    color: #40504e;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.day-checkbox input {
+    width: auto;
+    margin: 0;
+    accent-color: #2f6d64;
+}
+
+.day-checkbox:hover {
+    background: #eef4f3;
+}
+
+.settings-lists-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.compact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#doctorSchedulesList {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+#doctorSchedulesList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#doctorSchedulesList::-webkit-scrollbar-track {
+    background: #eef4f3;
+    border-radius: 999px;
+}
+
+#doctorSchedulesList::-webkit-scrollbar-thumb {
+    background: #bdd2cd;
+    border-radius: 999px;
+}
+
+.compact-item {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.compact-item strong {
+    display: block;
+    color: #263332;
+    margin-bottom: 5px;
+}
+
+.compact-item span {
+    display: block;
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #40504e;
+}
+
+.checkbox-row input {
+    width: auto;
+}
+
+.settings-complete-panel {
+    margin-top: 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+}
+
+.settings-complete-panel p {
+    margin: 0;
+    color: #687473;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
 .muted-text {
     color: #7d8987;
     font-size: 14px;
@@ -397,10 +577,27 @@ button:hover {
     color: #9b7b2f !important;
 }
 
+@media (max-width: 1100px) {
+    .doctor-settings-grid,
+    .settings-lists-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-complete-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
 @media (max-width: 950px) {
     .system-status-panel,
     .summary-grid,
-    .placeholder-grid {
+    .placeholder-grid,
+    .doctor-module-tabs {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-days-box {
         grid-template-columns: 1fr;
     }
 
@@ -418,5 +615,118 @@ button:hover {
 
     .dashboard-topbar h1 {
         font-size: 32px;
+    }
+}
+.compact-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.compact-item-top strong {
+    margin-bottom: 0;
+}
+
+.icon-button {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    margin: 0;
+    border-radius: 10px;
+    background: #f6e8e8;
+    color: #b84a4a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.icon-button:hover {
+    background: #f0d5d5;
+    color: #9f3c3c;
+    transform: none;
+}
+.pa-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.latest-invite-box,
+.invite-status-box {
+    margin-top: 16px;
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+    color: #40504e;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.invite-link-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.invite-link-row input {
+    flex: 1;
+}
+
+.compact-copy-row {
+    margin-top: 12px;
+}
+
+.scroll-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.scroll-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scroll-list::-webkit-scrollbar-track {
+    background: #eef4f3;
+    border-radius: 999px;
+}
+
+.scroll-list::-webkit-scrollbar-thumb {
+    background: #bdd2cd;
+    border-radius: 999px;
+}
+
+.wider-auth-card {
+    max-width: 560px;
+}
+
+.back-link-box {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.back-link-box a {
+    color: #2f6d64;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.back-link-box a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+    .pa-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .invite-link-row {
+        flex-direction: column;
     }
 }

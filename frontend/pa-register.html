@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA Registration - Hikmat Markaz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <main class="landing-page">
+        <section class="landing-header">
+            <div class="brand-badge">Hikmat Markaz</div>
+            <h1>PA Registration</h1>
+            <p class="slogan">
+                Complete your assistant account to start managing doctor appointments and patient visits.
+            </p>
+        </section>
+
+        <section class="auth-card wider-auth-card">
+            <div id="inviteStatusBox" class="invite-status-box">
+                Loading invite details...
+            </div>
+
+            <form id="paRegisterForm" class="hidden">
+                <label>Doctor</label>
+                <input id="inviteDoctorName" type="text" readonly>
+
+                <label>Hospital / Clinic</label>
+                <input id="inviteHospitalName" type="text" readonly>
+
+                <label>CNIC</label>
+                <input id="registerCnic" type="text" readonly>
+
+                <label>Email</label>
+                <input id="registerEmail" type="email" readonly>
+
+                <label>Full Name</label>
+                <input id="registerFullName" type="text" placeholder="Enter your full name" required>
+
+                <label>Phone</label>
+                <input id="registerPhone" type="text" placeholder="03001234567" required>
+
+                <label>Password</label>
+                <input id="registerPassword" type="password" placeholder="Minimum 8 characters" required>
+
+                <label>Confirm Password</label>
+                <input id="registerConfirmPassword" type="password" placeholder="Repeat password" required>
+
+                <button type="submit">Complete Registration</button>
+            </form>
+
+            <div id="registerResult" class="form-result"></div>
+
+            <div class="back-link-box">
+                <a href="./index.html">Back to Login</a>
+            </div>
+        </section>
+    </main>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/pa-register.js"></script>
+</body>
+</html>
