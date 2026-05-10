@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hikmat Markaz Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <main class="dashboard-page">
+        <header class="dashboard-topbar">
+            <div>
+                <div class="brand-badge">Hikmat Markaz</div>
+                <h1 id="dashboardTitle">Dashboard</h1>
+                <p id="dashboardSubtitle">Loading your workspace...</p>
+            </div>
+
+            <div class="dashboard-user">
+                <span id="loggedInRole">Role</span>
+                <strong id="loggedInEmail">email@example.com</strong>
+                <button id="logoutButton" class="secondary-button" type="button">Logout</button>
+            </div>
+        </header>
+
+        <section id="adminDashboard" class="dashboard-panel hidden">
+            <div class="dashboard-header">
+                <div>
+                    <h2>Admin Dashboard</h2>
+                    <p>Review and manage doctor signup requests.</p>
+                </div>
+
+                <button id="refreshPendingDoctorsButton" class="secondary-button" type="button">
+                    Refresh
+                </button>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span>Pending Doctors</span>
+                    <strong id="pendingDoctorsCount">0</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>Approved Doctors</span>
+                    <strong id="approvedDoctorsCount">0</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>Rejected Doctors</span>
+                    <strong id="rejectedDoctorsCount">0</strong>
+                </div>
+            </div>
+
+            <div id="adminMessage" class="form-result"></div>
+
+            <div id="pendingDoctorsList" class="doctor-list">
+                <p class="muted-text">No pending requests loaded yet.</p>
+            </div>
+        </section>
+
+        <section id="doctorDashboard" class="dashboard-panel hidden">
+            <div class="dashboard-header">
+                <div>
+                    <h2>Doctor Dashboard</h2>
+                    <p>Your hospital settings, schedules, PAs, appointments, and consultation queue will appear here.</p>
+                </div>
+            </div>
+
+            <div class="placeholder-grid">
+                <div class="placeholder-card">Hospital Settings</div>
+                <div class="placeholder-card">Weekly Schedule</div>
+                <div class="placeholder-card">PA Management</div>
+                <div class="placeholder-card">Patient Queue</div>
+            </div>
+        </section>
+
+        <section id="paDashboard" class="dashboard-panel hidden">
+            <div class="dashboard-header">
+                <div>
+                    <h2>PA Dashboard</h2>
+                    <p>Assigned doctors, appointment booking, payments, and prescription printing will appear here.</p>
+                </div>
+            </div>
+
+            <div class="placeholder-grid">
+                <div class="placeholder-card">Assigned Doctors</div>
+                <div class="placeholder-card">Book Appointment</div>
+                <div class="placeholder-card">Fee Status</div>
+                <div class="placeholder-card">Print Prescription</div>
+            </div>
+        </section>
+
+        <section id="patientDashboard" class="dashboard-panel hidden">
+            <div class="dashboard-header">
+                <div>
+                    <h2>Patient Portal</h2>
+                    <p>Your appointments, visit history, and prescriptions will appear here.</p>
+                </div>
+            </div>
+
+            <div class="placeholder-grid">
+                <div class="placeholder-card">My Appointments</div>
+                <div class="placeholder-card">My Prescriptions</div>
+                <div class="placeholder-card">Request Appointment</div>
+                <div class="placeholder-card">Medical History</div>
+            </div>
+        </section>
+    </main>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/dashboard.js"></script>
+</body>
+</html>

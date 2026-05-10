@@ -8,6 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
         ? window.HM_CONFIG.LOCAL_API_URL
         : window.HM_CONFIG.PRODUCTION_API_URL;
 
+    const existingToken = localStorage.getItem("hm_token");
+    const existingUser = localStorage.getItem("hm_user");
+
+    if (existingToken && existingUser) {
+        window.location.href = "./dashboard.html";
+        return;
+    }
+
     const backendStatus = document.getElementById("backendStatus");
     const backendMessage = document.getElementById("backendMessage");
 
@@ -26,11 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginEmail = document.getElementById("loginEmail");
     const loginPassword = document.getElementById("loginPassword");
     const loginResult = document.getElementById("loginResult");
-
-    const userBox = document.getElementById("userBox");
-    const loggedInRole = document.getElementById("loggedInRole");
-    const loggedInEmail = document.getElementById("loggedInEmail");
-    const logoutButton = document.getElementById("logoutButton");
 
     const doctorSignupForm = document.getElementById("doctorSignupForm");
     const signupResult = document.getElementById("signupResult");
@@ -64,29 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function saveSession(token, user) {
         localStorage.setItem("hm_token", token);
         localStorage.setItem("hm_user", JSON.stringify(user));
-    }
-
-    function getSavedUser() {
-        const user = localStorage.getItem("hm_user");
-        return user ? JSON.parse(user) : null;
-    }
-
-    function clearSession() {
-        localStorage.removeItem("hm_token");
-        localStorage.removeItem("hm_user");
-    }
-
-    function renderSession() {
-        const user = getSavedUser();
-
-        if (!user) {
-            userBox.classList.add("hidden");
-            return;
-        }
-
-        loggedInRole.textContent = user.role;
-        loggedInEmail.textContent = user.email || "No email";
-        userBox.classList.remove("hidden");
     }
 
     function showLoginTab() {
@@ -180,11 +160,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             saveSession(result.token, result.user);
-            renderSession();
+            showMessage(loginResult, "Login successful. Redirecting...", "ok");
 
-            showMessage(loginResult, `Login successful. Role: ${result.user.role}`, "ok");
-
-            loginPassword.value = "";
+            setTimeout(() => {
+                window.location.href = "./dashboard.html";
+            }, 600);
 
         } catch (error) {
             showMessage(loginResult, error.message, "error");
@@ -238,18 +218,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             setTimeout(() => {
                 showLoginTab();
-                showMessage(loginResult, "Signup request submitted. Login will work after admin approval.", "pending");
+                showMessage(loginResult, "Signup submitted. Login will work after admin approval.", "pending");
             }, 1200);
 
         } catch (error) {
             showMessage(signupResult, error.message, "error");
         }
-    }
-
-    function logoutUser() {
-        clearSession();
-        renderSession();
-        showMessage(loginResult, "Logged out successfully.", "ok");
     }
 
     function runAllChecks() {
@@ -272,9 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loginForm.addEventListener("submit", loginUser);
     doctorSignupForm.addEventListener("submit", submitDoctorSignup);
-    logoutButton.addEventListener("click", logoutUser);
 
-    renderSession();
     runAllChecks();
 
     setInterval(() => {
