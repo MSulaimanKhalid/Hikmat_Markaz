@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
@@ -14,6 +14,8 @@ from doctor_settings_routes import doctor_settings_bp
 from pa_routes import pa_bp
 from pa_workspace_routes import pa_workspace_bp
 from doctor_queue_routes import doctor_queue_bp
+from prescription_routes import prescription_bp
+from patient_portal_routes import patient_portal_bp, pa_online_requests_bp
 
 
 load_dotenv()
@@ -21,17 +23,42 @@ load_dotenv()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("APP_SECRET_KEY", "dev-secret-key")
 
+
 CORS(
     app,
-    resources={r"/api/*": {"origins": "*"}},
-    supports_credentials=True
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization"],
+    supports_credentials=False
 )
+
+
+@app.before_request
+def handle_preflight_request():
+    if request.method == "OPTIONS":
+        response = make_response("", 204)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    return response
+
 
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
     async_mode="threading"
 )
+
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_bp)
@@ -40,6 +67,9 @@ app.register_blueprint(doctor_settings_bp)
 app.register_blueprint(pa_bp)
 app.register_blueprint(pa_workspace_bp)
 app.register_blueprint(doctor_queue_bp)
+app.register_blueprint(prescription_bp)
+app.register_blueprint(patient_portal_bp)
+app.register_blueprint(pa_online_requests_bp)
 
 
 @app.get("/")
@@ -81,6 +111,9 @@ def root():
             "pa_available_slots": "/api/pa/available-slots?assignment_id=",
             "pa_create_appointment": "/api/pa/appointments",
             "pa_appointments": "/api/pa/appointments?date=",
+            "pa_online_requests": "/api/pa/appointment-requests",
+            "pa_confirm_online_request": "/api/pa/appointment-requests/<request_id>/confirm",
+            "pa_reject_online_request": "/api/pa/appointment-requests/<request_id>/reject",
 
             "doctor_queue_filters": "/api/doctor/queue/filters",
             "doctor_queue": "/api/doctor/queue?date=",
@@ -88,7 +121,20 @@ def root():
             "doctor_prioritize": "/api/doctor/appointments/<appointment_id>/prioritize",
             "doctor_start_consultation": "/api/doctor/appointments/<appointment_id>/start",
             "doctor_consultation_details": "/api/doctor/appointments/<appointment_id>/consultation",
-            "doctor_complete_consultation": "/api/doctor/appointments/<appointment_id>/complete"
+            "doctor_complete_consultation": "/api/doctor/appointments/<appointment_id>/complete",
+
+            "prescriptions_by_cnic": "/api/prescriptions/by-cnic?cnic=",
+            "prescription_by_visit": "/api/prescriptions/visits/<visit_id>",
+            "prescription_print_log": "/api/prescriptions/visits/<visit_id>/print-log",
+
+            "patient_signup": "/api/patient/signup",
+            "patient_login": "/api/patient/login",
+            "patient_me": "/api/patient/me",
+            "patient_appointments": "/api/patient/appointments",
+            "patient_prescriptions": "/api/patient/prescriptions",
+            "patient_doctors": "/api/patient/doctors",
+            "patient_available_slots": "/api/patient/available-slots?doctor_hospital_id=",
+            "patient_create_appointment_request": "/api/patient/appointment-requests"
         }
     })
 

@@ -10,137 +10,99 @@
 <body>
 
     <main class="landing-page">
+
         <section class="landing-header">
             <div class="brand-badge">Hikmat Markaz</div>
+
             <h1>Hikmat Markaz</h1>
+
             <p class="slogan">
-                Smart healthcare practice management for doctors, assistants, and patients.
+                A simple, connected healthcare system for doctors, assistants, and patients.
             </p>
         </section>
 
         <section class="auth-card">
-            <div class="tab-bar">
-                <button id="loginTab" class="tab-button active" type="button">Login</button>
-                <button id="signupTab" class="tab-button" type="button">Doctor Signup</button>
+
+            <div class="auth-card-header">
+                <h2>Login</h2>
+                <p>
+                    Admins, doctors, and PAs can sign in here.
+                </p>
             </div>
 
-            <section id="loginSection">
-                <h2>Welcome Back</h2>
-                <p class="auth-note">
-                    Login to continue to your dashboard.
-                </p>
+            <form id="loginForm">
+                <label>Email</label>
+                <input
+                    id="loginEmail"
+                    type="email"
+                    placeholder="Enter your email"
+                    autocomplete="email"
+                    required
+                >
 
-                <form id="loginForm">
-                    <label>Email</label>
-                    <input
-                        type="email"
-                        id="loginEmail"
-                        placeholder="admin@hikmatmarkaz.com"
-                        required
-                    >
+                <label>Password</label>
+                <input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
 
-                    <label>Password</label>
-                    <input
-                        type="password"
-                        id="loginPassword"
-                        placeholder="Enter password"
-                        required
-                    >
+                <button type="submit">Login</button>
+            </form>
 
-                    <button type="submit">Login</button>
-                </form>
+            <div id="loginResult" class="form-result"></div>
 
-                <div id="loginResult" class="form-result"></div>
-            </section>
+            <div class="auth-links-box">
+                <a href="./patient-signup.html" class="primary-auth-link">
+                    Create Patient Account
+                </a>
 
-            <section id="signupSection" class="hidden">
-                <h2>Doctor Signup</h2>
-                <p class="auth-note">
-                    Submit your request. Admin approval is required before login.
-                </p>
+                <span class="auth-link-divider">or</span>
 
-                <form id="doctorSignupForm">
-                    <label>Doctor Name</label>
-                    <input
-                        type="text"
-                        id="signupName"
-                        placeholder="Dr. Ayesha Khan"
-                        required
-                    >
+                <a href="./doctor-signup.html" class="secondary-auth-link">
+                    Request Doctor Signup
+                </a>
+            </div>
 
-                    <label>Specialization</label>
-                    <input
-                        type="text"
-                        id="signupSpecialization"
-                        placeholder="Cardiology, Gynecology, Dermatology"
-                        required
-                    >
-
-                    <label>License Number</label>
-                    <input
-                        type="text"
-                        id="signupLicense"
-                        placeholder="PMC-12345"
-                        required
-                    >
-
-                    <label>Email</label>
-                    <input
-                        type="email"
-                        id="signupEmail"
-                        placeholder="doctor@example.com"
-                        required
-                    >
-
-                    <label>Phone</label>
-                    <input
-                        type="text"
-                        id="signupPhone"
-                        placeholder="03001234567"
-                    >
-
-                    <label>Password</label>
-                    <input
-                        type="password"
-                        id="signupPassword"
-                        placeholder="Minimum 8 characters"
-                        required
-                    >
-
-                    <label>Confirm Password</label>
-                    <input
-                        type="password"
-                        id="signupConfirmPassword"
-                        placeholder="Repeat password"
-                        required
-                    >
-
-                    <button type="submit">Submit Signup Request</button>
-                </form>
-
-                <div id="signupResult" class="form-result"></div>
-            </section>
         </section>
 
         <section class="system-status-panel">
             <div class="status-card">
-                <span class="label">Backend Server</span>
-                <strong id="backendStatus">Checking...</strong>
-                <p id="backendMessage">Please wait</p>
+                <div class="status-card-header">
+                    <span class="status-dot pending" id="backendStatusDot"></span>
+                    <strong>Backend Server</strong>
+                </div>
+
+                <p id="backendStatusText">
+                    Checking backend connection...
+                </p>
             </div>
 
             <div class="status-card">
-                <span class="label">Database Connection</span>
-                <strong id="dbStatus">Checking...</strong>
-                <p id="dbMessage">Please wait</p>
+                <div class="status-card-header">
+                    <span class="status-dot pending" id="databaseStatusDot"></span>
+                    <strong>Database</strong>
+                </div>
+
+                <p id="databaseStatusText">
+                    Checking database connection...
+                </p>
             </div>
 
             <div class="status-card">
-                <span class="label">Live Sync</span>
-                <strong id="syncStatus">Waiting...</strong>
-                <p id="syncMessage">Runs every 30 seconds</p>
+                <div class="status-card-header">
+                    <span class="status-dot pending" id="syncStatusDot"></span>
+                    <strong>Live Sync</strong>
+                </div>
+
+                <p id="syncStatusText">
+                    Waiting for sync check...
+                </p>
             </div>
         </section>
+
     </main>
 
     <script src="./js/config.js"></script>
