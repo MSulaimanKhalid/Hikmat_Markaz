@@ -7,6 +7,7 @@ from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 
 from db import fetch_one
+from auth_routes import auth_bp
 
 
 load_dotenv()
@@ -16,7 +17,8 @@ app.config["SECRET_KEY"] = os.getenv("APP_SECRET_KEY", "dev-secret-key")
 
 CORS(
     app,
-    resources={r"/api/*": {"origins": "*"}}
+    resources={r"/api/*": {"origins": "*"}},
+    supports_credentials=True
 )
 
 socketio = SocketIO(
@@ -24,6 +26,8 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode="threading"
 )
+
+app.register_blueprint(auth_bp)
 
 
 @app.get("/")
@@ -34,7 +38,9 @@ def root():
         "docs": {
             "health": "/api/health",
             "database": "/api/health/db",
-            "sync": "/api/sync/ping"
+            "sync": "/api/sync/ping",
+            "login": "/api/auth/login",
+            "me": "/api/auth/me"
         }
     })
 

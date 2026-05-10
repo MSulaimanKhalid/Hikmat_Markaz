@@ -19,11 +19,11 @@ body {
 
 .hero-card {
     width: 100%;
-    max-width: 960px;
-    background: rgba(255, 255, 255, 0.88);
+    max-width: 1180px;
+    background: rgba(255, 255, 255, 0.9);
     border: 1px solid #e7e2d8;
     border-radius: 28px;
-    padding: 48px;
+    padding: 42px;
     box-shadow: 0 24px 70px rgba(50, 60, 60, 0.10);
 }
 
@@ -36,6 +36,13 @@ body {
     font-size: 14px;
     font-weight: 700;
     margin-bottom: 22px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr;
+    gap: 32px;
+    align-items: start;
 }
 
 h1 {
@@ -56,17 +63,18 @@ h1 {
 .status-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
+    gap: 16px;
 }
 
 .status-card {
     background: #fbfaf7;
     border: 1px solid #ece7dd;
     border-radius: 20px;
-    padding: 22px;
+    padding: 20px;
 }
 
-.status-card .label {
+.status-card .label,
+.user-box .label {
     display: block;
     color: #7d8987;
     font-size: 13px;
@@ -75,7 +83,7 @@ h1 {
 
 .status-card strong {
     display: block;
-    font-size: 22px;
+    font-size: 20px;
     color: #263332;
     margin-bottom: 8px;
 }
@@ -87,8 +95,52 @@ h1 {
     line-height: 1.5;
 }
 
-.actions {
-    margin-top: 32px;
+.auth-panel {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 24px;
+    padding: 28px;
+}
+
+.auth-panel h2 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: #1f2b2a;
+}
+
+.auth-note {
+    margin: 0 0 24px;
+    color: #6c7775;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+label {
+    color: #40504e;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+input {
+    width: 100%;
+    border: 1px solid #dcd7ce;
+    background: white;
+    border-radius: 14px;
+    padding: 13px 14px;
+    font-size: 15px;
+    outline: none;
+    color: #24302f;
+}
+
+input:focus {
+    border-color: #2f6d64;
+    box-shadow: 0 0 0 4px rgba(47, 109, 100, 0.08);
 }
 
 button {
@@ -101,11 +153,51 @@ button {
     font-weight: 700;
     cursor: pointer;
     transition: 0.2s ease;
+    margin-top: 8px;
 }
 
 button:hover {
     background: #25584f;
     transform: translateY(-1px);
+}
+
+.secondary-button {
+    background: #e8f1ef;
+    color: #2d5d56;
+}
+
+.secondary-button:hover {
+    background: #dceae7;
+}
+
+.login-result {
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.user-box {
+    margin-top: 22px;
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.user-box strong {
+    display: block;
+    font-size: 20px;
+    color: #2f6d64;
+    text-transform: capitalize;
+}
+
+.user-box p {
+    margin: 6px 0 0;
+    color: #687473;
+}
+
+.hidden {
+    display: none;
 }
 
 .ok {
@@ -120,16 +212,20 @@ button:hover {
     color: #9b7b2f !important;
 }
 
-@media (max-width: 850px) {
-    .hero-card {
-        padding: 30px;
+@media (max-width: 950px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .status-grid {
+        grid-template-columns: 1fr;
     }
 
     h1 {
         font-size: 34px;
     }
 
-    .status-grid {
-        grid-template-columns: 1fr;
+    .hero-card {
+        padding: 28px;
     }
 }

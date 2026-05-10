@@ -17,7 +17,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const syncStatus = document.getElementById("syncStatus");
     const syncMessage = document.getElementById("syncMessage");
 
-    const refreshButton = document.getElementById("refreshButton");
+    const loginForm = document.getElementById("loginForm");
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+    const loginResult = document.getElementById("loginResult");
+
+    const userBox = document.getElementById("userBox");
+    const loggedInRole = document.getElementById("loggedInRole");
+    const loggedInEmail = document.getElementById("loggedInEmail");
+    const logoutButton = document.getElementById("logoutButton");
 
     function setStatus(element, text, type) {
         element.textContent = text;
@@ -26,6 +34,43 @@ document.addEventListener("DOMContentLoaded", () => {
         if (type) {
             element.classList.add(type);
         }
+    }
+
+    function showLoginMessage(message, type) {
+        loginResult.textContent = message;
+        loginResult.classList.remove("ok", "error", "pending");
+
+        if (type) {
+            loginResult.classList.add(type);
+        }
+    }
+
+    function saveSession(token, user) {
+        localStorage.setItem("hm_token", token);
+        localStorage.setItem("hm_user", JSON.stringify(user));
+    }
+
+    function getSavedUser() {
+        const user = localStorage.getItem("hm_user");
+        return user ? JSON.parse(user) : null;
+    }
+
+    function clearSession() {
+        localStorage.removeItem("hm_token");
+        localStorage.removeItem("hm_user");
+    }
+
+    function renderSession() {
+        const user = getSavedUser();
+
+        if (!user) {
+            userBox.classList.add("hidden");
+            return;
+        }
+
+        loggedInRole.textContent = user.role;
+        loggedInEmail.textContent = user.email || "No email";
+        userBox.classList.remove("hidden");
     }
 
     async function checkBackend() {
@@ -79,6 +124,49 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    async function loginUser(event) {
+        event.preventDefault();
+
+        showLoginMessage("Logging in...", "pending");
+
+        const payload = {
+            email: loginEmail.value.trim(),
+            password: loginPassword.value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Login failed");
+            }
+
+            saveSession(result.token, result.user);
+            renderSession();
+
+            showLoginMessage(`Login successful. Role: ${result.user.role}`, "ok");
+
+            loginPassword.value = "";
+
+        } catch (error) {
+            showLoginMessage(error.message, "error");
+        }
+    }
+
+    function logoutUser() {
+        clearSession();
+        renderSession();
+        showLoginMessage("Logged out successfully.", "ok");
+    }
+
     function runAllChecks() {
         setStatus(backendStatus, "Checking...", "pending");
         backendMessage.textContent = `Calling ${API_BASE_URL}`;
@@ -94,8 +182,10 @@ document.addEventListener("DOMContentLoaded", () => {
         checkSync();
     }
 
-    refreshButton.addEventListener("click", runAllChecks);
+    loginForm.addEventListener("submit", loginUser);
+    logoutButton.addEventListener("click", logoutUser);
 
+    renderSession();
     runAllChecks();
 
     setInterval(() => {
