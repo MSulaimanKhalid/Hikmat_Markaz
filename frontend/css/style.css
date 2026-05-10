@@ -730,3 +730,291 @@ button:hover {
         flex-direction: column;
     }
 }
+.assignment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.assignment-card {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.assignment-card strong {
+    display: block;
+    color: #1f2b2a;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.assignment-card span {
+    display: block;
+    color: #687473;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.pa-booking-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 0.8fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.inline-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-input-row input {
+    flex: 1;
+}
+
+.inline-input-row button {
+    margin-top: 0;
+    white-space: nowrap;
+}
+
+.tall-scroll-list {
+    max-height: 520px;
+}
+
+.slot-button {
+    width: 100%;
+    text-align: left;
+    background: white;
+    color: #40504e;
+    border: 1px solid #ece7dd;
+    border-radius: 14px;
+    padding: 12px;
+    margin: 0;
+}
+
+.slot-button:hover {
+    background: #eef4f3;
+    color: #2f6d64;
+    transform: none;
+}
+
+.slot-button.selected {
+    border-color: #2f6d64;
+    background: #e8f1ef;
+}
+
+.slot-button strong,
+.slot-button span {
+    display: block;
+}
+
+.slot-button strong {
+    color: #1f2b2a;
+    margin-bottom: 5px;
+}
+
+.slot-button span {
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.selected-slot-box {
+    margin-bottom: 12px;
+}
+
+@media (max-width: 1100px) {
+    .assignment-grid,
+    .pa-booking-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .inline-input-row {
+        flex-direction: column;
+    }
+}
+.queue-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.doctor-queue-layout {
+    display: grid;
+    grid-template-columns: 0.9fr 1.3fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.queue-appointment-card {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.queue-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.queue-card-top strong {
+    display: block;
+    color: #1f2b2a;
+    font-size: 17px;
+}
+
+.queue-card-top span {
+    display: block;
+    color: #687473;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.queue-status-pill {
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #eef4f3;
+    color: #2f6d64;
+}
+
+.queue-status-pill.pending_fee {
+    background: #fff2d8;
+    color: #9b6b1e;
+}
+
+.queue-status-pill.waiting {
+    background: #e8f1ef;
+    color: #2f6d64;
+}
+
+.queue-status-pill.in_consultation {
+    background: #e7ecff;
+    color: #334b9b;
+}
+
+.queue-status-pill.completed {
+    background: #e8f5e8;
+    color: #2f6b35;
+}
+
+.queue-card-meta {
+    display: grid;
+    gap: 5px;
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.queue-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.queue-card-actions button {
+    margin-top: 0;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.consultation-panel-card {
+    min-height: 520px;
+}
+
+.consultation-summary {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.consultation-summary strong {
+    display: block;
+    font-size: 18px;
+    color: #1f2b2a;
+    margin-bottom: 8px;
+}
+
+.consultation-summary span {
+    display: block;
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.previous-history-box {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.previous-history-box h4,
+.consultation-form h4 {
+    margin: 0 0 12px;
+    color: #1f2b2a;
+}
+
+.history-item {
+    border-top: 1px solid #ece7dd;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.history-item strong,
+.history-item span {
+    display: block;
+}
+
+.history-item strong {
+    color: #1f2b2a;
+    margin-bottom: 5px;
+}
+
+.history-item span {
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.consultation-form {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.consultation-field-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.dynamic-consultation-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 1100px) {
+    .queue-filter-grid,
+    .doctor-queue-layout,
+    .consultation-field-grid,
+    .dynamic-consultation-fields {
+        grid-template-columns: 1fr;
+    }
+}
