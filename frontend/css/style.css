@@ -1152,3 +1152,102 @@ button:hover {
         grid-template-columns: 1fr;
     }
 }
+.patient-grid,
+.patient-request-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.patient-request-grid {
+    grid-template-columns: 0.8fr 1fr 0.8fr;
+}
+
+.online-request-card {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.online-request-card strong,
+.online-request-card span {
+    display: block;
+}
+
+.online-request-card strong {
+    color: #1f2b2a;
+    margin-bottom: 7px;
+}
+
+.online-request-card span {
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+    .patient-grid,
+    .patient-request-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.auth-card-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.auth-card-header h2 {
+    margin: 0;
+    color: #1f2b2a;
+    font-size: 26px;
+}
+
+.auth-card-header p {
+    margin: 8px 0 0;
+    color: #687473;
+    font-size: 14px;
+}
+
+.auth-links-box {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #ece7dd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.auth-links-box a {
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.primary-auth-link {
+    color: #2f6d64;
+    background: #e8f1ef;
+    padding: 10px 14px;
+    border-radius: 999px;
+    width: fit-content;
+}
+
+.primary-auth-link:hover {
+    background: #dcebe8;
+}
+
+.secondary-auth-link {
+    color: #687473;
+    font-size: 14px;
+}
+
+.secondary-auth-link:hover {
+    color: #2f6d64;
+}
+
+.auth-link-divider {
+    color: #9a9f9d;
+    font-size: 12px;
+}
