@@ -256,11 +256,54 @@
             </section>
 
             <section id="doctorPaTab" class="doctor-module-panel hidden">
-                <div class="placeholder-grid">
-                    <div class="placeholder-card">PA List</div>
-                    <div class="placeholder-card">Invite PA</div>
-                    <div class="placeholder-card">PA Hospital Link</div>
-                    <div class="placeholder-card">PA Status</div>
+                <div class="dashboard-header">
+                    <div>
+                        <h2>PA List</h2>
+                        <p>Invite PAs by CNIC and email, or link an existing PA to a hospital.</p>
+                    </div>
+
+                    <button id="refreshPaDataButton" class="secondary-button" type="button">
+                        Refresh PA Data
+                    </button>
+                </div>
+
+                <div id="paMessage" class="form-result"></div>
+
+                <div class="pa-grid">
+                    <div class="settings-card">
+                        <h3>Invite / Link PA</h3>
+
+                        <form id="paInviteForm">
+                            <label>Hospital / Clinic</label>
+                            <select id="paInviteHospital" required>
+                                <option value="">Select hospital</option>
+                            </select>
+
+                            <label>PA CNIC</label>
+                            <input id="paInviteCnic" type="text" placeholder="3520212345671" required>
+
+                            <label>PA Email</label>
+                            <input id="paInviteEmail" type="email" placeholder="pa@example.com" required>
+
+                            <button type="submit">Invite / Link PA</button>
+                        </form>
+
+                        <div id="latestInviteBox" class="latest-invite-box hidden"></div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Linked PAs</h3>
+                        <div id="linkedPaList" class="compact-list scroll-list">
+                            <p class="muted-text">No linked PAs loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>PA Invites</h3>
+                        <div id="paInviteList" class="compact-list scroll-list">
+                            <p class="muted-text">No invites loaded.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 

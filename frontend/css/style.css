@@ -649,3 +649,84 @@ button:hover {
     color: #9f3c3c;
     transform: none;
 }
+.pa-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.latest-invite-box,
+.invite-status-box {
+    margin-top: 16px;
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+    color: #40504e;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.invite-link-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.invite-link-row input {
+    flex: 1;
+}
+
+.compact-copy-row {
+    margin-top: 12px;
+}
+
+.scroll-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.scroll-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scroll-list::-webkit-scrollbar-track {
+    background: #eef4f3;
+    border-radius: 999px;
+}
+
+.scroll-list::-webkit-scrollbar-thumb {
+    background: #bdd2cd;
+    border-radius: 999px;
+}
+
+.wider-auth-card {
+    max-width: 560px;
+}
+
+.back-link-box {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.back-link-box a {
+    color: #2f6d64;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.back-link-box a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+    .pa-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .invite-link-row {
+        flex-direction: column;
+    }
+}

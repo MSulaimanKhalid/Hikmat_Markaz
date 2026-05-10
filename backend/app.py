@@ -11,6 +11,7 @@ from auth_routes import auth_bp
 from doctor_routes import doctor_bp
 from admin_routes import admin_bp
 from doctor_settings_routes import doctor_settings_bp
+from pa_routes import pa_bp
 
 
 load_dotenv()
@@ -34,6 +35,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(doctor_settings_bp)
+app.register_blueprint(pa_bp)
 
 
 @app.get("/")
@@ -60,8 +62,14 @@ def root():
             "doctor_settings": "/api/doctor/settings",
             "doctor_add_hospital": "/api/doctor/hospitals",
             "doctor_add_schedule": "/api/doctor/hospitals/<hospital_id>/schedules",
+            "doctor_delete_schedule": "/api/doctor/schedules/<schedule_id>",
             "doctor_add_form_field": "/api/doctor/form-fields",
-            "doctor_complete_settings": "/api/doctor/settings/complete"
+            "doctor_complete_settings": "/api/doctor/settings/complete",
+
+            "doctor_pa_links": "/api/doctor/pa-links",
+            "doctor_pa_invites": "/api/doctor/pa-invites",
+            "public_pa_invite": "/api/pa/invites/<invite_token>",
+            "accept_pa_invite": "/api/pa/invites/<invite_token>/accept"
         }
     })
 

@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const user = JSON.parse(userRaw);
 
+    let doctorHospitalsCache = [];
+
     const dashboardTitle = document.getElementById("dashboardTitle");
     const dashboardSubtitle = document.getElementById("dashboardSubtitle");
     const loggedInRole = document.getElementById("loggedInRole");
@@ -67,6 +69,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const doctorSchedulesList = document.getElementById("doctorSchedulesList");
     const doctorFieldsList = document.getElementById("doctorFieldsList");
     const completeSettingsButton = document.getElementById("completeSettingsButton");
+
+    const refreshPaDataButton = document.getElementById("refreshPaDataButton");
+    const paMessage = document.getElementById("paMessage");
+    const paInviteForm = document.getElementById("paInviteForm");
+    const paInviteHospital = document.getElementById("paInviteHospital");
+    const paInviteCnic = document.getElementById("paInviteCnic");
+    const paInviteEmail = document.getElementById("paInviteEmail");
+    const linkedPaList = document.getElementById("linkedPaList");
+    const paInviteList = document.getElementById("paInviteList");
+    const latestInviteBox = document.getElementById("latestInviteBox");
 
     const dayNames = {
         0: "Sunday",
@@ -188,6 +200,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 panel.classList.remove("hidden");
             }
         });
+
+        if (tabId === "doctorPaTab") {
+            loadDoctorPaData();
+        }
+
+        if (tabId === "doctorSettingsTab") {
+            loadDoctorSettings();
+        }
     }
 
     async function loadAdminSummary() {
@@ -320,9 +340,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await apiRequest("/api/doctor/settings");
             const data = result.data;
 
+            doctorHospitalsCache = data.hospitals || [];
+
             renderDoctorHospitals(data.hospitals || []);
             renderDoctorSchedules(data.schedules || []);
             renderDoctorFields(data.form_fields || []);
+            renderPaHospitalOptions(data.hospitals || []);
 
             showMessage(doctorSettingsMessage, "Doctor settings loaded.", "ok");
         } catch (error) {
@@ -348,6 +371,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }).join("");
 
         scheduleHospital.innerHTML = `<option value="">Select hospital</option>` + hospitals.map((hospital) => {
+            return `<option value="${hospital.id}">${hospital.name} - ${hospital.city || ""}</option>`;
+        }).join("");
+    }
+
+    function renderPaHospitalOptions(hospitals) {
+        if (!paInviteHospital) {
+            return;
+        }
+
+        if (!hospitals.length) {
+            paInviteHospital.innerHTML = `<option value="">Add hospital first</option>`;
+            return;
+        }
+
+        paInviteHospital.innerHTML = `<option value="">Select hospital</option>` + hospitals.map((hospital) => {
             return `<option value="${hospital.id}">${hospital.name} - ${hospital.city || ""}</option>`;
         }).join("");
     }
@@ -593,6 +631,171 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function buildInviteLink(inviteToken) {
+        const currentPath = window.location.pathname;
+        const basePath = currentPath.replace("dashboard.html", "pa-register.html");
+        return `${window.location.origin}${basePath}?token=${inviteToken}`;
+    }
+
+    async function submitPaInvite(event) {
+        event.preventDefault();
+
+        try {
+            showMessage(paMessage, "Processing PA invite/link request...", "pending");
+            latestInviteBox.classList.add("hidden");
+            latestInviteBox.innerHTML = "";
+
+            const payload = {
+                doctor_hospital_id: Number(paInviteHospital.value),
+                cnic: paInviteCnic.value.trim(),
+                email: paInviteEmail.value.trim()
+            };
+
+            if (!payload.doctor_hospital_id) {
+                showMessage(paMessage, "Please select a hospital.", "error");
+                return;
+            }
+
+            const result = await apiRequest("/api/doctor/pa-invites", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            showMessage(paMessage, result.message, "ok");
+
+            if (result.mode === "invite_created") {
+                const inviteToken = result.data.invite.invite_token;
+                const inviteLink = buildInviteLink(inviteToken);
+
+                latestInviteBox.classList.remove("hidden");
+                latestInviteBox.innerHTML = `
+                    <strong>Invite Link Created</strong>
+                    <p>Share this link with the PA:</p>
+                    <div class="invite-link-row">
+                        <input type="text" value="${inviteLink}" readonly>
+                        <button type="button" class="secondary-button copy-link-button" data-copy-link="${inviteLink}">
+                            Copy
+                        </button>
+                    </div>
+                `;
+            }
+
+            paInviteForm.reset();
+            renderPaHospitalOptions(doctorHospitalsCache);
+
+            await loadDoctorPaData();
+        } catch (error) {
+            showMessage(paMessage, error.message, "error");
+        }
+    }
+
+    async function loadDoctorPaData() {
+        try {
+            showMessage(paMessage, "Loading PA data...", "pending");
+
+            if (!doctorHospitalsCache.length) {
+                await loadDoctorSettings();
+            } else {
+                renderPaHospitalOptions(doctorHospitalsCache);
+            }
+
+            const linksResult = await apiRequest("/api/doctor/pa-links");
+            const invitesResult = await apiRequest("/api/doctor/pa-invites");
+
+            renderLinkedPas(linksResult.data || []);
+            renderPaInvites(invitesResult.data || []);
+
+            showMessage(paMessage, "PA data loaded.", "ok");
+        } catch (error) {
+            showMessage(paMessage, error.message, "error");
+        }
+    }
+
+    function renderLinkedPas(links) {
+        if (!links.length) {
+            linkedPaList.innerHTML = `<p class="muted-text">No linked PAs yet.</p>`;
+            return;
+        }
+
+        linkedPaList.innerHTML = links.map((link) => {
+            return `
+                <div class="compact-item">
+                    <strong>${link.full_name || "Unnamed PA"}</strong>
+                    <span>CNIC: ${link.cnic}</span>
+                    <span>Email: ${link.email || "No email"}</span>
+                    <span>Phone: ${link.phone || "No phone"}</span>
+                    <span>Hospital: ${link.hospital_name} - ${link.hospital_city || ""}</span>
+                    <span>Status: ${link.account_status || "N/A"}</span>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function renderPaInvites(invites) {
+        if (!invites.length) {
+            paInviteList.innerHTML = `<p class="muted-text">No PA invites yet.</p>`;
+            return;
+        }
+
+        paInviteList.innerHTML = invites.map((invite) => {
+            const inviteLink = buildInviteLink(invite.invite_token);
+            const showCopy = invite.status === "pending";
+
+            return `
+                <div class="compact-item pa-invite-item">
+                    <strong>${invite.invited_email}</strong>
+                    <span>CNIC: ${invite.invited_cnic}</span>
+                    <span>Hospital: ${invite.hospital_name} - ${invite.hospital_city || ""}</span>
+                    <span>Status: ${invite.status}</span>
+
+                    ${showCopy ? `
+                        <div class="invite-link-row compact-copy-row">
+                            <input type="text" value="${inviteLink}" readonly>
+                            <button type="button" class="secondary-button copy-link-button" data-copy-link="${inviteLink}">
+                                Copy
+                            </button>
+                        </div>
+                    ` : ""}
+                </div>
+            `;
+        }).join("");
+    }
+
+    async function copyText(value) {
+        try {
+            await navigator.clipboard.writeText(value);
+            showMessage(paMessage, "Invite link copied.", "ok");
+        } catch (error) {
+            const tempInput = document.createElement("input");
+            tempInput.value = value;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showMessage(paMessage, "Invite link copied.", "ok");
+        }
+    }
+
+    function handleCopyClick(event) {
+        const button = event.target.closest(".copy-link-button");
+
+        if (!button) {
+            return;
+        }
+
+        const link = button.getAttribute("data-copy-link");
+
+        if (!link) {
+            showMessage(paMessage, "Invite link not found.", "error");
+            return;
+        }
+
+        copyText(link);
+    }
+
     logoutButton.addEventListener("click", logout);
 
     doctorModuleTabs.forEach((tab) => {
@@ -631,6 +834,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (completeSettingsButton) {
         completeSettingsButton.addEventListener("click", completeDoctorSettings);
+    }
+
+    if (paInviteForm) {
+        paInviteForm.addEventListener("submit", submitPaInvite);
+    }
+
+    if (refreshPaDataButton) {
+        refreshPaDataButton.addEventListener("click", loadDoctorPaData);
+    }
+
+    if (latestInviteBox) {
+        latestInviteBox.addEventListener("click", handleCopyClick);
+    }
+
+    if (paInviteList) {
+        paInviteList.addEventListener("click", handleCopyClick);
     }
 
     verifySession();
