@@ -329,17 +329,124 @@
         <section id="paDashboard" class="dashboard-panel hidden">
             <div class="dashboard-header">
                 <div>
-                    <h2>PA Dashboard</h2>
-                    <p>Assigned doctors, appointment booking, payments, and prescription printing will appear here.</p>
+                    <h2>PA Workspace</h2>
+                    <p>Register patients, book appointments, and manage today’s visits.</p>
                 </div>
+
+                <button id="refreshPaWorkspaceButton" class="secondary-button" type="button">
+                    Refresh
+                </button>
             </div>
 
-            <div class="placeholder-grid">
-                <div class="placeholder-card">Assigned Doctors</div>
-                <div class="placeholder-card">Book Appointment</div>
-                <div class="placeholder-card">Fee Status</div>
-                <div class="placeholder-card">Print Prescription</div>
+            <div class="doctor-module-tabs">
+                <button class="pa-module-tab active" type="button" data-pa-tab="paAssignmentsTab">
+                    Assigned Doctors
+                </button>
+
+                <button class="pa-module-tab" type="button" data-pa-tab="paBookAppointmentTab">
+                    Book Appointment
+                </button>
+
+                <button class="pa-module-tab" type="button" data-pa-tab="paAppointmentsTab">
+                    Appointments
+                </button>
             </div>
+
+            <div id="paWorkspaceMessage" class="form-result"></div>
+
+            <section id="paAssignmentsTab" class="pa-module-panel">
+                <div id="paAssignmentsList" class="assignment-grid">
+                    <p class="muted-text">No assignments loaded.</p>
+                </div>
+            </section>
+
+            <section id="paBookAppointmentTab" class="pa-module-panel hidden">
+                <div class="pa-booking-grid">
+                    <div class="settings-card">
+                        <h3>Patient Details</h3>
+
+                        <form id="paAppointmentForm">
+                            <label>Doctor / Hospital</label>
+                            <select id="appointmentAssignment" required>
+                                <option value="">Select doctor assignment</option>
+                            </select>
+
+                            <label>Patient CNIC</label>
+                            <div class="inline-input-row">
+                                <input id="patientCnic" type="text" placeholder="3520212345671" required>
+                                <button id="searchPatientButton" class="secondary-button" type="button">Search</button>
+                            </div>
+
+                            <label>Patient Name</label>
+                            <input id="patientName" type="text" placeholder="Patient full name" required>
+
+                            <label>Gender</label>
+                            <select id="patientGender">
+                                <option value="">Select gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+
+                            <label>Date of Birth</label>
+                            <input id="patientDob" type="date">
+
+                            <label>Phone</label>
+                            <input id="patientPhone" type="text" placeholder="03001234567">
+
+                            <label>Email</label>
+                            <input id="patientEmail" type="email" placeholder="patient@example.com">
+
+                            <label>Fee Status</label>
+                            <select id="appointmentFeeStatus" required>
+                                <option value="paid">Paid</option>
+                                <option value="pending">Pending</option>
+                                <option value="waived">Waived</option>
+                            </select>
+
+                            <label>Notes</label>
+                            <textarea id="appointmentNotes" placeholder="Optional notes"></textarea>
+
+                            <button id="loadSlotsButton" type="button">
+                                Load Available Slots
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Available Slots</h3>
+                        <div id="availableSlotsList" class="compact-list scroll-list tall-scroll-list">
+                            <p class="muted-text">Select assignment and load slots.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Selected Slot</h3>
+                        <div id="selectedSlotBox" class="selected-slot-box">
+                            <p class="muted-text">No slot selected.</p>
+                        </div>
+
+                        <button id="bookAppointmentButton" type="button">
+                            Book Appointment
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="paAppointmentsTab" class="pa-module-panel hidden">
+                <div class="dashboard-header">
+                    <div>
+                        <h2>Today’s Appointments</h2>
+                        <p>Appointments booked by this PA for the selected date.</p>
+                    </div>
+
+                    <input id="paAppointmentsDate" type="date">
+                </div>
+
+                <div id="paAppointmentsList" class="compact-list scroll-list tall-scroll-list">
+                    <p class="muted-text">No appointments loaded.</p>
+                </div>
+            </section>
         </section>
 
         <section id="patientDashboard" class="dashboard-panel hidden">
@@ -361,5 +468,6 @@
 
     <script src="./js/config.js"></script>
     <script src="./js/dashboard.js"></script>
+    <script src="./js/doctor-queue.js"></script>
 </body>
 </html>

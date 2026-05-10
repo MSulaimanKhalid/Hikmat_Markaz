@@ -19,6 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const user = JSON.parse(userRaw);
 
     let doctorHospitalsCache = [];
+    let paAssignmentsCache = [];
+    let selectedAppointmentSlot = null;
 
     const dashboardTitle = document.getElementById("dashboardTitle");
     const dashboardSubtitle = document.getElementById("dashboardSubtitle");
@@ -80,6 +82,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const paInviteList = document.getElementById("paInviteList");
     const latestInviteBox = document.getElementById("latestInviteBox");
 
+    const paModuleTabs = document.querySelectorAll(".pa-module-tab");
+    const paModulePanels = document.querySelectorAll(".pa-module-panel");
+    const refreshPaWorkspaceButton = document.getElementById("refreshPaWorkspaceButton");
+    const paWorkspaceMessage = document.getElementById("paWorkspaceMessage");
+    const paAssignmentsList = document.getElementById("paAssignmentsList");
+    const appointmentAssignment = document.getElementById("appointmentAssignment");
+    const paAppointmentForm = document.getElementById("paAppointmentForm");
+    const patientCnic = document.getElementById("patientCnic");
+    const patientName = document.getElementById("patientName");
+    const patientGender = document.getElementById("patientGender");
+    const patientDob = document.getElementById("patientDob");
+    const patientPhone = document.getElementById("patientPhone");
+    const patientEmail = document.getElementById("patientEmail");
+    const appointmentFeeStatus = document.getElementById("appointmentFeeStatus");
+    const appointmentNotes = document.getElementById("appointmentNotes");
+    const searchPatientButton = document.getElementById("searchPatientButton");
+    const loadSlotsButton = document.getElementById("loadSlotsButton");
+    const availableSlotsList = document.getElementById("availableSlotsList");
+    const selectedSlotBox = document.getElementById("selectedSlotBox");
+    const bookAppointmentButton = document.getElementById("bookAppointmentButton");
+    const paAppointmentsDate = document.getElementById("paAppointmentsDate");
+    const paAppointmentsList = document.getElementById("paAppointmentsList");
+
     const dayNames = {
         0: "Sunday",
         1: "Monday",
@@ -104,8 +129,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function apiRequest(path, options = {}) {
-        const headers = options.headers || {};
-        headers["Authorization"] = `Bearer ${token}`;
+        const freshToken = localStorage.getItem("hm_token");
+
+        if (!freshToken) {
+            localStorage.removeItem("hm_user");
+            window.location.href = "./index.html";
+            throw new Error("Login session expired. Please login again.");
+        }
+
+        const headers = {
+            ...(options.headers || {}),
+            "Authorization": `Bearer ${freshToken}`
+        };
 
         const response = await fetch(`${API_BASE_URL}${path}`, {
             ...options,
@@ -121,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!response.ok) {
-            throw new Error(result.message || "Request failed");
+            throw new Error(result.error || result.message || "Request failed");
         }
 
         return result;
@@ -148,6 +183,31 @@ document.addEventListener("DOMContentLoaded", () => {
         return value.charAt(0).toUpperCase() + value.slice(1);
     }
 
+    function todayIsoDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+    function formatDateTime(value) {
+        if (!value) {
+            return "";
+        }
+
+        const date = new Date(value);
+
+        return date.toLocaleString([], {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
     function renderDashboardByRole() {
         loggedInRole.textContent = user.role;
         loggedInEmail.textContent = user.email || "No email";
@@ -169,6 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (user.role === "pa") {
             paDashboard.classList.remove("hidden");
+            loadPaWorkspace();
         }
 
         if (user.role === "patient") {
@@ -207,6 +268,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (tabId === "doctorSettingsTab") {
             loadDoctorSettings();
+        }
+    }
+
+    function switchPaModule(tabId) {
+        paModuleTabs.forEach((tab) => {
+            tab.classList.remove("active");
+
+            if (tab.getAttribute("data-pa-tab") === tabId) {
+                tab.classList.add("active");
+            }
+        });
+
+        paModulePanels.forEach((panel) => {
+            panel.classList.add("hidden");
+
+            if (panel.id === tabId) {
+                panel.classList.remove("hidden");
+            }
+        });
+
+        if (tabId === "paAssignmentsTab") {
+            loadPaAssignments();
+        }
+
+        if (tabId === "paAppointmentsTab") {
+            loadPaAppointments();
         }
     }
 
@@ -796,11 +883,316 @@ document.addEventListener("DOMContentLoaded", () => {
         copyText(link);
     }
 
+    async function loadPaWorkspace() {
+        try {
+            showMessage(paWorkspaceMessage, "Loading PA workspace...", "pending");
+
+            await loadPaAssignments();
+            await loadPaAppointments();
+
+            showMessage(paWorkspaceMessage, "PA workspace loaded.", "ok");
+        } catch (error) {
+            showMessage(paWorkspaceMessage, error.message, "error");
+        }
+    }
+
+    async function loadPaAssignments() {
+        const result = await apiRequest("/api/pa/assignments");
+        paAssignmentsCache = result.data || [];
+
+        renderPaAssignments(paAssignmentsCache);
+        renderPaAssignmentOptions(paAssignmentsCache);
+    }
+
+    function renderPaAssignments(assignments) {
+        if (!assignments.length) {
+            paAssignmentsList.innerHTML = `<p class="muted-text">No doctor assignments found.</p>`;
+            return;
+        }
+
+        paAssignmentsList.innerHTML = assignments.map((assignment) => {
+            return `
+                <div class="assignment-card">
+                    <strong>${assignment.doctor_name}</strong>
+                    <span>${assignment.specialization || "Doctor"}</span>
+                    <span>${assignment.hospital_name} - ${assignment.hospital_city || ""}</span>
+                    <span>${assignment.hospital_address || "No address"}</span>
+                    <span>Active schedules: ${assignment.active_schedule_count || 0}</span>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function renderPaAssignmentOptions(assignments) {
+        if (!appointmentAssignment) {
+            return;
+        }
+
+        if (!assignments.length) {
+            appointmentAssignment.innerHTML = `<option value="">No assignments available</option>`;
+            return;
+        }
+
+        appointmentAssignment.innerHTML = `<option value="">Select doctor assignment</option>` + assignments.map((assignment) => {
+            return `
+                <option value="${assignment.doctor_pa_id}">
+                    ${assignment.doctor_name} - ${assignment.hospital_name} (${assignment.hospital_city || ""})
+                </option>
+            `;
+        }).join("");
+    }
+
+    async function searchPatientByCnic() {
+        const cnic = patientCnic.value.trim();
+
+        if (!cnic) {
+            showMessage(paWorkspaceMessage, "Enter patient CNIC first.", "error");
+            return;
+        }
+
+        try {
+            showMessage(paWorkspaceMessage, "Searching patient...", "pending");
+
+            const result = await apiRequest(`/api/pa/patients/search?cnic=${encodeURIComponent(cnic)}`);
+
+            if (!result.data) {
+                showMessage(paWorkspaceMessage, "Patient not found. Enter new patient details.", "ok");
+                return;
+            }
+
+            patientName.value = result.data.name || "";
+            patientGender.value = result.data.gender || "";
+            patientDob.value = result.data.dob || "";
+            patientPhone.value = result.data.phone || "";
+            patientEmail.value = result.data.email || "";
+
+            showMessage(paWorkspaceMessage, "Existing patient loaded.", "ok");
+        } catch (error) {
+            showMessage(paWorkspaceMessage, error.message, "error");
+        }
+    }
+
+    async function loadAvailableSlots() {
+        const assignmentId = appointmentAssignment.value;
+
+        if (!assignmentId) {
+            showMessage(paWorkspaceMessage, "Select doctor assignment first.", "error");
+            return;
+        }
+
+        try {
+            selectedAppointmentSlot = null;
+            renderSelectedSlot();
+
+            showMessage(paWorkspaceMessage, "Loading available slots...", "pending");
+
+            const result = await apiRequest(`/api/pa/available-slots?assignment_id=${assignmentId}&days=14`);
+
+            renderAvailableSlots(result.data || []);
+
+            showMessage(paWorkspaceMessage, `${(result.data || []).length} available slot(s) loaded.`, "ok");
+        } catch (error) {
+            showMessage(paWorkspaceMessage, error.message, "error");
+        }
+    }
+
+    function renderAvailableSlots(slots) {
+        if (!slots.length) {
+            availableSlotsList.innerHTML = `<p class="muted-text">No available slots found.</p>`;
+            availableSlotsList.dataset.slots = "[]";
+            return;
+        }
+
+        availableSlotsList.innerHTML = slots.map((slot, index) => {
+            return `
+                <button
+                    type="button"
+                    class="slot-button"
+                    data-slot-index="${index}"
+                >
+                    <strong>${slot.date}</strong>
+                    <span>${slot.start_time} - ${slot.end_time}</span>
+                    <span>${slot.doctor_name}</span>
+                    <span>${slot.hospital_name}</span>
+                    <span>Fee: ${slot.consultation_fee}</span>
+                </button>
+            `;
+        }).join("");
+
+        availableSlotsList.dataset.slots = JSON.stringify(slots);
+    }
+
+    function selectAvailableSlot(index) {
+        const slots = JSON.parse(availableSlotsList.dataset.slots || "[]");
+        selectedAppointmentSlot = slots[index];
+
+        renderSelectedSlot();
+
+        document.querySelectorAll(".slot-button").forEach((button) => {
+            button.classList.remove("selected");
+        });
+
+        const selectedButton = availableSlotsList.querySelector(`[data-slot-index="${index}"]`);
+
+        if (selectedButton) {
+            selectedButton.classList.add("selected");
+        }
+    }
+
+    function renderSelectedSlot() {
+        if (!selectedAppointmentSlot) {
+            selectedSlotBox.innerHTML = `<p class="muted-text">No slot selected.</p>`;
+            return;
+        }
+
+        selectedSlotBox.innerHTML = `
+            <div class="compact-item">
+                <strong>${selectedAppointmentSlot.date}</strong>
+                <span>${selectedAppointmentSlot.start_time} - ${selectedAppointmentSlot.end_time}</span>
+                <span>Doctor: ${selectedAppointmentSlot.doctor_name}</span>
+                <span>Hospital: ${selectedAppointmentSlot.hospital_name}</span>
+                <span>Fee: ${selectedAppointmentSlot.consultation_fee}</span>
+            </div>
+        `;
+    }
+
+    function handleAvailableSlotClick(event) {
+        const button = event.target.closest(".slot-button");
+
+        if (!button) {
+            return;
+        }
+
+        const index = Number(button.getAttribute("data-slot-index"));
+        selectAvailableSlot(index);
+    }
+
+    async function bookAppointment() {
+        const freshToken = localStorage.getItem("hm_token");
+
+        console.log("BOOK_APPOINTMENT_TOKEN_EXISTS:", Boolean(freshToken));
+
+        if (!freshToken) {
+            showMessage(paWorkspaceMessage, "Login session expired. Please login again as PA.", "error");
+            localStorage.removeItem("hm_user");
+            window.location.href = "./index.html";
+            return;
+        }
+
+        if (!selectedAppointmentSlot) {
+            showMessage(paWorkspaceMessage, "Select an appointment slot first.", "error");
+            return;
+        }
+
+        if (!patientCnic.value.trim() || !patientName.value.trim()) {
+            showMessage(paWorkspaceMessage, "Patient CNIC and name are required.", "error");
+            return;
+        }
+
+        const payload = {
+            assignment_id: Number(appointmentAssignment.value),
+            appointment_datetime: selectedAppointmentSlot.appointment_datetime,
+            fee_status: appointmentFeeStatus.value,
+            notes: appointmentNotes.value.trim(),
+            patient: {
+                cnic: patientCnic.value.trim(),
+                name: patientName.value.trim(),
+                gender: patientGender.value,
+                dob: patientDob.value,
+                phone: patientPhone.value.trim(),
+                email: patientEmail.value.trim()
+            }
+        };
+
+        try {
+            showMessage(paWorkspaceMessage, "Booking appointment...", "pending");
+
+            const response = await fetch(`${API_BASE_URL}/api/pa/appointments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${freshToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            let result = {};
+
+            try {
+                result = await response.json();
+            } catch (error) {
+                throw new Error("Server returned an invalid response.");
+            }
+
+            if (!response.ok) {
+                console.log("FULL_BOOK_APPOINTMENT_RESPONSE:", result);
+                throw new Error(result.error || result.message || "Appointment booking failed.");
+            }
+
+            showMessage(paWorkspaceMessage, result.message, "ok");
+
+            paAppointmentForm.reset();
+            selectedAppointmentSlot = null;
+            renderSelectedSlot();
+
+            availableSlotsList.innerHTML = `
+                <p class="muted-text">
+                    Appointment booked. Load slots again for latest availability.
+                </p>
+            `;
+
+            await loadPaAppointments();
+        } catch (error) {
+            showMessage(paWorkspaceMessage, error.message, "error");
+            console.log("BOOK_APPOINTMENT_ERROR:", error.message);
+        }
+    }
+
+    async function loadPaAppointments() {
+        if (!paAppointmentsDate.value) {
+            paAppointmentsDate.value = todayIsoDate();
+        }
+
+        try {
+            const result = await apiRequest(`/api/pa/appointments?date=${paAppointmentsDate.value}`);
+            renderPaAppointments(result.data || []);
+        } catch (error) {
+            showMessage(paWorkspaceMessage, error.message, "error");
+        }
+    }
+
+    function renderPaAppointments(appointments) {
+        if (!appointments.length) {
+            paAppointmentsList.innerHTML = `<p class="muted-text">No appointments found for this date.</p>`;
+            return;
+        }
+
+        paAppointmentsList.innerHTML = appointments.map((appointment) => {
+            return `
+                <div class="compact-item">
+                    <strong>${appointment.patient_name}</strong>
+                    <span>CNIC: ${appointment.patient_cnic}</span>
+                    <span>Time: ${formatDateTime(appointment.appointment_datetime)}</span>
+                    <span>Doctor: ${appointment.doctor_name} (${appointment.specialization || "Doctor"})</span>
+                    <span>Hospital: ${appointment.hospital_name} - ${appointment.hospital_city || ""}</span>
+                    <span>Fee: ${appointment.fee_charged} (${appointment.fee_status})</span>
+                    <span>Status: ${appointment.status}</span>
+                </div>
+            `;
+        }).join("");
+    }
+
     logoutButton.addEventListener("click", logout);
 
     doctorModuleTabs.forEach((tab) => {
         tab.addEventListener("click", () => {
             switchDoctorModule(tab.getAttribute("data-doctor-tab"));
+        });
+    });
+
+    paModuleTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+            switchPaModule(tab.getAttribute("data-pa-tab"));
         });
     });
 
@@ -852,12 +1244,46 @@ document.addEventListener("DOMContentLoaded", () => {
         paInviteList.addEventListener("click", handleCopyClick);
     }
 
+    if (refreshPaWorkspaceButton) {
+        refreshPaWorkspaceButton.addEventListener("click", loadPaWorkspace);
+    }
+
+    if (paAppointmentForm) {
+        paAppointmentForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+        });
+    }
+
+    if (searchPatientButton) {
+        searchPatientButton.addEventListener("click", searchPatientByCnic);
+    }
+
+    if (loadSlotsButton) {
+        loadSlotsButton.addEventListener("click", loadAvailableSlots);
+    }
+
+    if (availableSlotsList) {
+        availableSlotsList.addEventListener("click", handleAvailableSlotClick);
+    }
+
+    if (bookAppointmentButton) {
+        bookAppointmentButton.addEventListener("click", bookAppointment);
+    }
+
+    if (paAppointmentsDate) {
+        paAppointmentsDate.addEventListener("change", loadPaAppointments);
+    }
+
     verifySession();
     renderDashboardByRole();
 
     setInterval(() => {
         if (user.role === "admin") {
             loadAdminSummary();
+        }
+
+        if (user.role === "pa") {
+            loadPaAppointments();
         }
     }, 30000);
 });
