@@ -13,35 +13,71 @@
         <section class="hero-card">
             <div class="brand-badge">Hikmat Markaz</div>
 
-            <h1>Healthcare Practice Management</h1>
+            <div class="layout">
+                <div class="intro">
+                    <h1>Healthcare Practice Management</h1>
 
-            <p class="subtitle">
-                A centralized platform for doctors, assistants, patients, appointments,
-                prescriptions, and financial records.
-            </p>
+                    <p class="subtitle">
+                        A centralized platform for doctors, assistants, patients,
+                        appointments, prescriptions, and financial records.
+                    </p>
 
-            <div class="status-grid">
-                <div class="status-card">
-                    <span class="label">Backend Status</span>
-                    <strong id="backendStatus">Checking...</strong>
-                    <p id="backendMessage">Please wait</p>
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <span class="label">Backend</span>
+                            <strong id="backendStatus">Checking...</strong>
+                            <p id="backendMessage">Please wait</p>
+                        </div>
+
+                        <div class="status-card">
+                            <span class="label">Database</span>
+                            <strong id="dbStatus">Checking...</strong>
+                            <p id="dbMessage">Please wait</p>
+                        </div>
+
+                        <div class="status-card">
+                            <span class="label">Live Sync</span>
+                            <strong id="syncStatus">Waiting...</strong>
+                            <p id="syncMessage">Runs every 30 seconds</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="status-card">
-                    <span class="label">Database Status</span>
-                    <strong id="dbStatus">Checking...</strong>
-                    <p id="dbMessage">Please wait</p>
-                </div>
+                <div class="auth-panel">
+                    <h2>Login</h2>
+                    <p class="auth-note">
+                        Use your registered email and password.
+                    </p>
 
-                <div class="status-card">
-                    <span class="label">Live Sync</span>
-                    <strong id="syncStatus">Waiting...</strong>
-                    <p id="syncMessage">Runs every 30 seconds</p>
-                </div>
-            </div>
+                    <form id="loginForm">
+                        <label>Email</label>
+                        <input
+                            type="email"
+                            id="loginEmail"
+                            placeholder="admin@hikmatmarkaz.com"
+                            required
+                        >
 
-            <div class="actions">
-                <button id="refreshButton">Refresh Status</button>
+                        <label>Password</label>
+                        <input
+                            type="password"
+                            id="loginPassword"
+                            placeholder="Enter password"
+                            required
+                        >
+
+                        <button type="submit">Login</button>
+                    </form>
+
+                    <div id="loginResult" class="login-result"></div>
+
+                    <div id="userBox" class="user-box hidden">
+                        <span class="label">Logged in as</span>
+                        <strong id="loggedInRole"></strong>
+                        <p id="loggedInEmail"></p>
+                        <button id="logoutButton" class="secondary-button">Logout</button>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

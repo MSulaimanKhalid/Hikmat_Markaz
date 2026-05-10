@@ -66,10 +66,11 @@ def execute_query(query, params=None):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query, params or ())
-            conn.commit()
 
+            rows = []
             if cursor.description:
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
 
-            return []
+            conn.commit()
+
+            return [dict(row) for row in rows]
