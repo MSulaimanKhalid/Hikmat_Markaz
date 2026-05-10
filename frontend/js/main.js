@@ -17,6 +17,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const syncStatus = document.getElementById("syncStatus");
     const syncMessage = document.getElementById("syncMessage");
 
+    const loginTab = document.getElementById("loginTab");
+    const signupTab = document.getElementById("signupTab");
+    const loginSection = document.getElementById("loginSection");
+    const signupSection = document.getElementById("signupSection");
+
     const loginForm = document.getElementById("loginForm");
     const loginEmail = document.getElementById("loginEmail");
     const loginPassword = document.getElementById("loginPassword");
@@ -27,6 +32,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const loggedInEmail = document.getElementById("loggedInEmail");
     const logoutButton = document.getElementById("logoutButton");
 
+    const doctorSignupForm = document.getElementById("doctorSignupForm");
+    const signupResult = document.getElementById("signupResult");
+
+    const signupName = document.getElementById("signupName");
+    const signupSpecialization = document.getElementById("signupSpecialization");
+    const signupLicense = document.getElementById("signupLicense");
+    const signupEmail = document.getElementById("signupEmail");
+    const signupPhone = document.getElementById("signupPhone");
+    const signupPassword = document.getElementById("signupPassword");
+    const signupConfirmPassword = document.getElementById("signupConfirmPassword");
+
     function setStatus(element, text, type) {
         element.textContent = text;
         element.classList.remove("ok", "error", "pending");
@@ -36,12 +52,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function showLoginMessage(message, type) {
-        loginResult.textContent = message;
-        loginResult.classList.remove("ok", "error", "pending");
+    function showMessage(element, message, type) {
+        element.textContent = message;
+        element.classList.remove("ok", "error", "pending");
 
         if (type) {
-            loginResult.classList.add(type);
+            element.classList.add(type);
         }
     }
 
@@ -71,6 +87,20 @@ document.addEventListener("DOMContentLoaded", () => {
         loggedInRole.textContent = user.role;
         loggedInEmail.textContent = user.email || "No email";
         userBox.classList.remove("hidden");
+    }
+
+    function showLoginTab() {
+        loginTab.classList.add("active");
+        signupTab.classList.remove("active");
+        loginSection.classList.remove("hidden");
+        signupSection.classList.add("hidden");
+    }
+
+    function showSignupTab() {
+        signupTab.classList.add("active");
+        loginTab.classList.remove("active");
+        signupSection.classList.remove("hidden");
+        loginSection.classList.add("hidden");
     }
 
     async function checkBackend() {
@@ -127,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loginUser(event) {
         event.preventDefault();
 
-        showLoginMessage("Logging in...", "pending");
+        showMessage(loginResult, "Logging in...", "pending");
 
         const payload = {
             email: loginEmail.value.trim(),
@@ -152,19 +182,74 @@ document.addEventListener("DOMContentLoaded", () => {
             saveSession(result.token, result.user);
             renderSession();
 
-            showLoginMessage(`Login successful. Role: ${result.user.role}`, "ok");
+            showMessage(loginResult, `Login successful. Role: ${result.user.role}`, "ok");
 
             loginPassword.value = "";
 
         } catch (error) {
-            showLoginMessage(error.message, "error");
+            showMessage(loginResult, error.message, "error");
+        }
+    }
+
+    async function submitDoctorSignup(event) {
+        event.preventDefault();
+
+        showMessage(signupResult, "Submitting signup request...", "pending");
+
+        const password = signupPassword.value;
+        const confirmPassword = signupConfirmPassword.value;
+
+        if (password.length < 8) {
+            showMessage(signupResult, "Password must be at least 8 characters long.", "error");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showMessage(signupResult, "Passwords do not match.", "error");
+            return;
+        }
+
+        const payload = {
+            name: signupName.value.trim(),
+            specialization: signupSpecialization.value.trim(),
+            license_number: signupLicense.value.trim(),
+            email: signupEmail.value.trim(),
+            phone: signupPhone.value.trim(),
+            password: password
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/doctors/signup`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Signup failed");
+            }
+
+            showMessage(signupResult, result.message, "ok");
+            doctorSignupForm.reset();
+
+            setTimeout(() => {
+                showLoginTab();
+                showMessage(loginResult, "Signup request submitted. Login will work after admin approval.", "pending");
+            }, 1200);
+
+        } catch (error) {
+            showMessage(signupResult, error.message, "error");
         }
     }
 
     function logoutUser() {
         clearSession();
         renderSession();
-        showLoginMessage("Logged out successfully.", "ok");
+        showMessage(loginResult, "Logged out successfully.", "ok");
     }
 
     function runAllChecks() {
@@ -182,7 +267,11 @@ document.addEventListener("DOMContentLoaded", () => {
         checkSync();
     }
 
+    loginTab.addEventListener("click", showLoginTab);
+    signupTab.addEventListener("click", showSignupTab);
+
     loginForm.addEventListener("submit", loginUser);
+    doctorSignupForm.addEventListener("submit", submitDoctorSignup);
     logoutButton.addEventListener("click", logoutUser);
 
     renderSession();

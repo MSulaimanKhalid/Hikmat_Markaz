@@ -74,3 +74,19 @@ def execute_query(query, params=None):
             conn.commit()
 
             return [dict(row) for row in rows]
+
+
+@contextmanager
+def transaction():
+    """
+    Use this when multiple SQL operations must succeed or fail together.
+    Example: doctor signup inserts into app_user and doctor.
+    """
+    with get_connection() as conn:
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                yield cursor
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
