@@ -1018,3 +1018,137 @@ button:hover {
         grid-template-columns: 1fr;
     }
 }
+.prescription-layout {
+    display: grid;
+    grid-template-columns: 0.8fr 1fr 1.25fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.prescription-patient-box {
+    margin-top: 16px;
+}
+
+.prescription-visit-card {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.prescription-visit-card strong,
+.prescription-visit-card span {
+    display: block;
+}
+
+.prescription-visit-card strong {
+    color: #1f2b2a;
+    margin-bottom: 6px;
+}
+
+.prescription-visit-card span {
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.prescription-visit-card button {
+    margin-top: 10px;
+}
+
+.prescription-preview-card {
+    min-height: 560px;
+}
+
+.prescription-preview-box {
+    max-height: 560px;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-bottom: 14px;
+}
+
+.prescription-document {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.prescription-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    border-bottom: 1px solid #ece7dd;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+}
+
+.prescription-header h2 {
+    margin: 0;
+    color: #1f2b2a;
+}
+
+.prescription-header p,
+.prescription-header span {
+    display: block;
+    color: #687473;
+    font-size: 13px;
+    margin: 4px 0 0;
+}
+
+.prescription-header strong {
+    display: block;
+    color: #1f2b2a;
+    font-size: 16px;
+}
+
+.prescription-section {
+    border-bottom: 1px solid #f0ebe3;
+    padding: 12px 0;
+}
+
+.prescription-section h4 {
+    margin: 0 0 8px;
+    color: #1f2b2a;
+}
+
+.prescription-section p {
+    margin: 4px 0;
+    color: #40504e;
+    line-height: 1.6;
+}
+
+.prescription-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+}
+
+.prescription-info-grid span {
+    color: #40504e;
+    font-size: 13px;
+}
+
+.prescription-footer {
+    padding-top: 12px;
+    color: #687473;
+    font-size: 12px;
+}
+
+.prescription-footer p {
+    margin: 4px 0;
+}
+
+@media (max-width: 1100px) {
+    .prescription-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .prescription-header {
+        flex-direction: column;
+    }
+
+    .prescription-info-grid {
+        grid-template-columns: 1fr;
+    }
+}

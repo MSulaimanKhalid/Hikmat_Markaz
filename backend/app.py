@@ -14,6 +14,7 @@ from doctor_settings_routes import doctor_settings_bp
 from pa_routes import pa_bp
 from pa_workspace_routes import pa_workspace_bp
 from doctor_queue_routes import doctor_queue_bp
+from prescription_routes import prescription_bp
 
 
 load_dotenv()
@@ -40,6 +41,7 @@ app.register_blueprint(doctor_settings_bp)
 app.register_blueprint(pa_bp)
 app.register_blueprint(pa_workspace_bp)
 app.register_blueprint(doctor_queue_bp)
+app.register_blueprint(prescription_bp)
 
 
 @app.get("/")
@@ -88,7 +90,11 @@ def root():
             "doctor_prioritize": "/api/doctor/appointments/<appointment_id>/prioritize",
             "doctor_start_consultation": "/api/doctor/appointments/<appointment_id>/start",
             "doctor_consultation_details": "/api/doctor/appointments/<appointment_id>/consultation",
-            "doctor_complete_consultation": "/api/doctor/appointments/<appointment_id>/complete"
+            "doctor_complete_consultation": "/api/doctor/appointments/<appointment_id>/complete",
+
+            "prescriptions_by_cnic": "/api/prescriptions/by-cnic?cnic=",
+            "prescription_by_visit": "/api/prescriptions/visits/<visit_id>",
+            "prescription_print_log": "/api/prescriptions/visits/<visit_id>/print-log"
         }
     })
 
