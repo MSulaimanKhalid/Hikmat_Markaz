@@ -9,22 +9,18 @@ body {
     color: #24302f;
 }
 
-.page {
+.landing-page {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 32px;
+    padding: 48px 24px;
 }
 
-.hero-card {
-    width: 100%;
-    max-width: 1180px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #e7e2d8;
-    border-radius: 28px;
-    padding: 42px;
-    box-shadow: 0 24px 70px rgba(50, 60, 60, 0.10);
+.landing-header {
+    text-align: center;
+    max-width: 740px;
+    margin-bottom: 26px;
 }
 
 .brand-badge {
@@ -35,71 +31,31 @@ body {
     color: #2d5d56;
     font-size: 14px;
     font-weight: 700;
-    margin-bottom: 22px;
+    margin-bottom: 18px;
 }
 
-.layout {
-    display: grid;
-    grid-template-columns: 1.4fr 0.8fr;
-    gap: 32px;
-    align-items: start;
-}
-
-h1 {
+.landing-header h1 {
     margin: 0;
-    font-size: 44px;
-    line-height: 1.1;
+    font-size: 52px;
+    line-height: 1.05;
     color: #1f2b2a;
 }
 
-.subtitle {
-    max-width: 720px;
-    margin: 18px 0 34px;
+.slogan {
+    margin: 16px auto 0;
     color: #687473;
     font-size: 17px;
     line-height: 1.7;
 }
 
-.status-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-}
-
-.status-card {
-    background: #fbfaf7;
-    border: 1px solid #ece7dd;
-    border-radius: 20px;
-    padding: 20px;
-}
-
-.status-card .label,
-.user-box .label {
-    display: block;
-    color: #7d8987;
-    font-size: 13px;
-    margin-bottom: 10px;
-}
-
-.status-card strong {
-    display: block;
-    font-size: 20px;
-    color: #263332;
-    margin-bottom: 8px;
-}
-
-.status-card p {
-    margin: 0;
-    color: #6c7775;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-.auth-panel {
-    background: #fbfaf7;
-    border: 1px solid #ece7dd;
-    border-radius: 24px;
-    padding: 24px;
+.auth-card {
+    width: 100%;
+    max-width: 460px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e7e2d8;
+    border-radius: 28px;
+    padding: 28px;
+    box-shadow: 0 24px 70px rgba(50, 60, 60, 0.10);
 }
 
 .tab-bar {
@@ -131,7 +87,7 @@ h1 {
     box-shadow: 0 6px 18px rgba(50, 60, 60, 0.08);
 }
 
-.auth-panel h2 {
+h2 {
     margin: 0 0 8px;
     font-size: 28px;
     color: #1f2b2a;
@@ -156,7 +112,8 @@ label {
     font-weight: 700;
 }
 
-input {
+input,
+textarea {
     width: 100%;
     border: 1px solid #dcd7ce;
     background: white;
@@ -165,9 +122,11 @@ input {
     font-size: 15px;
     outline: none;
     color: #24302f;
+    font-family: inherit;
 }
 
-input:focus {
+input:focus,
+textarea:focus {
     border-color: #2f6d64;
     box-shadow: 0 0 0 4px rgba(47, 109, 100, 0.08);
 }
@@ -199,34 +158,231 @@ button:hover {
     background: #dceae7;
 }
 
+.danger-button {
+    background: #b84a4a;
+}
+
+.danger-button:hover {
+    background: #9f3c3c;
+}
+
 .form-result {
     margin-top: 16px;
     font-size: 14px;
     line-height: 1.5;
 }
 
-.user-box {
-    margin-top: 22px;
-    background: white;
+.system-status-panel {
+    width: 100%;
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.status-card {
+    background: rgba(255, 255, 255, 0.80);
     border: 1px solid #ece7dd;
-    border-radius: 18px;
+    border-radius: 20px;
     padding: 18px;
 }
 
-.user-box strong {
+.status-card .label {
     display: block;
-    font-size: 20px;
-    color: #2f6d64;
-    text-transform: capitalize;
+    color: #7d8987;
+    font-size: 13px;
+    margin-bottom: 10px;
 }
 
-.user-box p {
-    margin: 6px 0 0;
+.status-card strong {
+    display: block;
+    font-size: 20px;
+    color: #263332;
+    margin-bottom: 8px;
+}
+
+.status-card p {
+    margin: 0;
+    color: #6c7775;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dashboard-page {
+    min-height: 100vh;
+    padding: 34px;
+}
+
+.dashboard-topbar {
+    max-width: 1180px;
+    margin: 0 auto 24px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e7e2d8;
+    border-radius: 28px;
+    padding: 28px;
+    box-shadow: 0 18px 50px rgba(50, 60, 60, 0.08);
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.dashboard-topbar h1 {
+    margin: 0;
+    font-size: 38px;
+    color: #1f2b2a;
+}
+
+.dashboard-topbar p {
+    margin: 8px 0 0;
     color: #687473;
 }
 
+.dashboard-user {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 16px;
+    min-width: 240px;
+}
+
+.dashboard-user span {
+    display: block;
+    color: #2f6d64;
+    text-transform: capitalize;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.dashboard-user strong {
+    display: block;
+    margin-top: 5px;
+    color: #263332;
+    font-size: 14px;
+    word-break: break-all;
+}
+
+.dashboard-panel {
+    max-width: 1180px;
+    margin: 0 auto;
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 18px 50px rgba(50, 60, 60, 0.08);
+}
+
+.dashboard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.dashboard-header h2 {
+    margin: 0;
+    color: #1f2b2a;
+    font-size: 26px;
+}
+
+.dashboard-header p {
+    margin: 6px 0 0;
+    color: #6c7775;
+    font-size: 14px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.summary-card,
+.placeholder-card {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.summary-card span {
+    display: block;
+    color: #7d8987;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.summary-card strong {
+    display: block;
+    color: #2f6d64;
+    font-size: 26px;
+}
+
+.placeholder-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.placeholder-card {
+    color: #2f6d64;
+    font-weight: 700;
+    min-height: 96px;
+    display: flex;
+    align-items: center;
+}
+
+.doctor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.doctor-card {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 16px;
+}
+
+.doctor-card h4 {
+    margin: 0 0 8px;
+    color: #1f2b2a;
+    font-size: 18px;
+}
+
+.doctor-meta {
+    display: grid;
+    gap: 6px;
+    color: #687473;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.doctor-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.reject-reason {
+    margin-top: 12px;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.muted-text {
+    color: #7d8987;
+    font-size: 14px;
+    margin: 0;
+}
+
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .ok {
@@ -242,19 +398,25 @@ button:hover {
 }
 
 @media (max-width: 950px) {
-    .layout {
+    .system-status-panel,
+    .summary-grid,
+    .placeholder-grid {
         grid-template-columns: 1fr;
     }
 
-    .status-grid {
-        grid-template-columns: 1fr;
+    .dashboard-topbar {
+        flex-direction: column;
     }
 
-    h1 {
-        font-size: 34px;
+    .dashboard-user {
+        width: 100%;
     }
 
-    .hero-card {
-        padding: 28px;
+    .landing-header h1 {
+        font-size: 38px;
+    }
+
+    .dashboard-topbar h1 {
+        font-size: 32px;
     }
 }

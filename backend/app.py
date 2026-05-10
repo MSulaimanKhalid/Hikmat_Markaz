@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from db import fetch_one
 from auth_routes import auth_bp
 from doctor_routes import doctor_bp
+from admin_routes import admin_bp
 
 
 load_dotenv()
@@ -30,6 +31,7 @@ socketio = SocketIO(
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_bp)
+app.register_blueprint(admin_bp)
 
 
 @app.get("/")
@@ -44,7 +46,10 @@ def root():
             "login": "/api/auth/login",
             "me": "/api/auth/me",
             "doctor_signup": "/api/doctors/signup",
-            "doctor_signup_status": "/api/doctors/signup-status?email="
+            "doctor_signup_status": "/api/doctors/signup-status?email=",
+            "admin_pending_doctors": "/api/admin/doctors/pending",
+            "admin_all_doctors": "/api/admin/doctors",
+            "admin_dashboard_summary": "/api/admin/dashboard-summary"
         }
     })
 
