@@ -12,6 +12,7 @@ from doctor_routes import doctor_bp
 from admin_routes import admin_bp
 from doctor_settings_routes import doctor_settings_bp
 from pa_routes import pa_bp
+from pa_workspace_routes import pa_workspace_bp
 
 
 load_dotenv()
@@ -36,6 +37,7 @@ app.register_blueprint(doctor_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(doctor_settings_bp)
 app.register_blueprint(pa_bp)
+app.register_blueprint(pa_workspace_bp)
 
 
 @app.get("/")
@@ -69,7 +71,14 @@ def root():
             "doctor_pa_links": "/api/doctor/pa-links",
             "doctor_pa_invites": "/api/doctor/pa-invites",
             "public_pa_invite": "/api/pa/invites/<invite_token>",
-            "accept_pa_invite": "/api/pa/invites/<invite_token>/accept"
+            "accept_pa_invite": "/api/pa/invites/<invite_token>/accept",
+
+            "pa_me": "/api/pa/me",
+            "pa_assignments": "/api/pa/assignments",
+            "pa_patient_search": "/api/pa/patients/search?cnic=",
+            "pa_available_slots": "/api/pa/available-slots?assignment_id=",
+            "pa_create_appointment": "/api/pa/appointments",
+            "pa_appointments": "/api/pa/appointments?date="
         }
     })
 
