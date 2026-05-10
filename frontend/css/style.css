@@ -1,0 +1,135 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: linear-gradient(135deg, #f7f4ee, #eef4f3);
+    color: #24302f;
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+}
+
+.hero-card {
+    width: 100%;
+    max-width: 960px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #e7e2d8;
+    border-radius: 28px;
+    padding: 48px;
+    box-shadow: 0 24px 70px rgba(50, 60, 60, 0.10);
+}
+
+.brand-badge {
+    display: inline-flex;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #e8f1ef;
+    color: #2d5d56;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 22px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 44px;
+    line-height: 1.1;
+    color: #1f2b2a;
+}
+
+.subtitle {
+    max-width: 720px;
+    margin: 18px 0 34px;
+    color: #687473;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.status-card {
+    background: #fbfaf7;
+    border: 1px solid #ece7dd;
+    border-radius: 20px;
+    padding: 22px;
+}
+
+.status-card .label {
+    display: block;
+    color: #7d8987;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.status-card strong {
+    display: block;
+    font-size: 22px;
+    color: #263332;
+    margin-bottom: 8px;
+}
+
+.status-card p {
+    margin: 0;
+    color: #6c7775;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.actions {
+    margin-top: 32px;
+}
+
+button {
+    border: none;
+    background: #2f6d64;
+    color: white;
+    padding: 13px 22px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+button:hover {
+    background: #25584f;
+    transform: translateY(-1px);
+}
+
+.ok {
+    color: #2f6d64 !important;
+}
+
+.error {
+    color: #b84a4a !important;
+}
+
+.pending {
+    color: #9b7b2f !important;
+}
+
+@media (max-width: 850px) {
+    .hero-card {
+        padding: 30px;
+    }
+
+    h1 {
+        font-size: 34px;
+    }
+
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+}
