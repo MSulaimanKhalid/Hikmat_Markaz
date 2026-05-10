@@ -63,17 +63,224 @@
         <section id="doctorDashboard" class="dashboard-panel hidden">
             <div class="dashboard-header">
                 <div>
-                    <h2>Doctor Dashboard</h2>
-                    <p>Your hospital settings, schedules, PAs, appointments, and consultation queue will appear here.</p>
+                    <h2>Doctor Workspace</h2>
+                    <p>Manage settings, assistants, queue, appointments, and custom clinical fields.</p>
                 </div>
+
+                <button id="refreshDoctorSettingsButton" class="secondary-button" type="button">
+                    Refresh
+                </button>
             </div>
 
-            <div class="placeholder-grid">
-                <div class="placeholder-card">Hospital Settings</div>
-                <div class="placeholder-card">Weekly Schedule</div>
-                <div class="placeholder-card">PA Management</div>
-                <div class="placeholder-card">Patient Queue</div>
+            <div class="doctor-module-tabs">
+                <button class="doctor-module-tab active" type="button" data-doctor-tab="doctorSettingsTab">
+                    Settings
+                </button>
+
+                <button class="doctor-module-tab" type="button" data-doctor-tab="doctorPaTab">
+                    PA List
+                </button>
+
+                <button class="doctor-module-tab" type="button" data-doctor-tab="doctorQueueTab">
+                    Queue
+                </button>
+
+                <button class="doctor-module-tab" type="button" data-doctor-tab="doctorAppointmentsTab">
+                    Appointments
+                </button>
             </div>
+
+            <div id="doctorSettingsMessage" class="form-result"></div>
+
+            <section id="doctorSettingsTab" class="doctor-module-panel">
+                <div class="doctor-settings-grid">
+                    <div class="settings-card">
+                        <h3>Add Hospital / Clinic</h3>
+
+                        <form id="hospitalForm">
+                            <label>Hospital / Clinic Name</label>
+                            <input id="hospitalName" type="text" placeholder="Evercare Hospital" required>
+
+                            <label>Address</label>
+                            <input id="hospitalAddress" type="text" placeholder="Main Boulevard, Lahore">
+
+                            <label>City</label>
+                            <input id="hospitalCity" type="text" placeholder="Lahore" required>
+
+                            <button type="submit">Add Hospital</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Add Weekly Schedule</h3>
+
+                        <form id="scheduleForm">
+                            <label>Hospital / Clinic</label>
+                            <select id="scheduleHospital" required>
+                                <option value="">Select hospital</option>
+                            </select>
+
+                            <label>Days</label>
+
+                            <div class="schedule-days-box">
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="0">
+                                    <span>Sunday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="1">
+                                    <span>Monday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="2">
+                                    <span>Tuesday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="3">
+                                    <span>Wednesday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="4">
+                                    <span>Thursday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="5">
+                                    <span>Friday</span>
+                                </label>
+
+                                <label class="day-checkbox">
+                                    <input type="checkbox" name="scheduleDay" value="6">
+                                    <span>Saturday</span>
+                                </label>
+                            </div>
+
+                            <p class="field-hint">
+                                Select multiple days when timing is same. If timing is different on some days, create a separate schedule entry.
+                            </p>
+
+                            <label>Start Time</label>
+                            <input id="scheduleStartTime" type="time" required>
+
+                            <label>End Time</label>
+                            <input id="scheduleEndTime" type="time" required>
+
+                            <label>Default Consultation Minutes</label>
+                            <input id="scheduleDuration" type="number" value="15" min="1" required>
+
+                            <label>Consultation Fee</label>
+                            <input id="scheduleFee" type="number" value="0" min="0" required>
+
+                            <button type="submit">Add Schedule</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Add Dynamic Form Field</h3>
+
+                        <form id="formFieldForm">
+                            <label>Where should this field appear?</label>
+                            <select id="fieldContext" required>
+                                <option value="patient_intake">PA Patient Intake Form</option>
+                                <option value="consultation">Doctor Consultation Form</option>
+                            </select>
+
+                            <label>Field Label</label>
+                            <input id="fieldLabel" type="text" placeholder="Pregnancy Month" required>
+
+                            <label>Field Type</label>
+                            <select id="fieldType" required>
+                                <option value="text">Text</option>
+                                <option value="number">Number</option>
+                                <option value="date">Date</option>
+                                <option value="time">Time</option>
+                                <option value="textarea">Textarea</option>
+                                <option value="select">Dropdown</option>
+                                <option value="checkbox">Checkbox</option>
+                                <option value="boolean">Yes / No</option>
+                            </select>
+
+                            <label>Placeholder</label>
+                            <input id="fieldPlaceholder" type="text" placeholder="Enter value">
+
+                            <label>Help Text</label>
+                            <input id="fieldHelpText" type="text" placeholder="Optional guidance">
+
+                            <label class="checkbox-row">
+                                <input id="fieldRequired" type="checkbox">
+                                Required field
+                            </label>
+
+                            <button type="submit">Add Field</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="settings-lists-grid">
+                    <div class="settings-list-card">
+                        <h3>Hospitals / Clinics</h3>
+                        <div id="doctorHospitalsList" class="compact-list">
+                            <p class="muted-text">No hospitals loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Schedules</h3>
+                        <div id="doctorSchedulesList" class="compact-list">
+                            <p class="muted-text">No schedules loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Dynamic Fields</h3>
+                        <div id="doctorFieldsList" class="compact-list">
+                            <p class="muted-text">No fields loaded.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-complete-panel">
+                    <div>
+                        <h3>Complete Settings</h3>
+                        <p>After adding at least one hospital and one schedule, mark your settings as complete.</p>
+                    </div>
+
+                    <button id="completeSettingsButton" type="button">
+                        Mark Settings Complete
+                    </button>
+                </div>
+            </section>
+
+            <section id="doctorPaTab" class="doctor-module-panel hidden">
+                <div class="placeholder-grid">
+                    <div class="placeholder-card">PA List</div>
+                    <div class="placeholder-card">Invite PA</div>
+                    <div class="placeholder-card">PA Hospital Link</div>
+                    <div class="placeholder-card">PA Status</div>
+                </div>
+            </section>
+
+            <section id="doctorQueueTab" class="doctor-module-panel hidden">
+                <div class="placeholder-grid">
+                    <div class="placeholder-card">Today Queue</div>
+                    <div class="placeholder-card">Prioritize Patient</div>
+                    <div class="placeholder-card">Start Consultation</div>
+                    <div class="placeholder-card">Live Queue Sync</div>
+                </div>
+            </section>
+
+            <section id="doctorAppointmentsTab" class="doctor-module-panel hidden">
+                <div class="placeholder-grid">
+                    <div class="placeholder-card">Upcoming Appointments</div>
+                    <div class="placeholder-card">Completed Visits</div>
+                    <div class="placeholder-card">Pending Payments</div>
+                    <div class="placeholder-card">Patient History</div>
+                </div>
+            </section>
         </section>
 
         <section id="paDashboard" class="dashboard-panel hidden">

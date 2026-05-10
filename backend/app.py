@@ -10,6 +10,7 @@ from db import fetch_one
 from auth_routes import auth_bp
 from doctor_routes import doctor_bp
 from admin_routes import admin_bp
+from doctor_settings_routes import doctor_settings_bp
 
 
 load_dotenv()
@@ -32,6 +33,7 @@ socketio = SocketIO(
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(doctor_settings_bp)
 
 
 @app.get("/")
@@ -43,13 +45,23 @@ def root():
             "health": "/api/health",
             "database": "/api/health/db",
             "sync": "/api/sync/ping",
+
             "login": "/api/auth/login",
             "me": "/api/auth/me",
+
             "doctor_signup": "/api/doctors/signup",
             "doctor_signup_status": "/api/doctors/signup-status?email=",
+
             "admin_pending_doctors": "/api/admin/doctors/pending",
             "admin_all_doctors": "/api/admin/doctors",
-            "admin_dashboard_summary": "/api/admin/dashboard-summary"
+            "admin_dashboard_summary": "/api/admin/dashboard-summary",
+
+            "doctor_me": "/api/doctor/me",
+            "doctor_settings": "/api/doctor/settings",
+            "doctor_add_hospital": "/api/doctor/hospitals",
+            "doctor_add_schedule": "/api/doctor/hospitals/<hospital_id>/schedules",
+            "doctor_add_form_field": "/api/doctor/form-fields",
+            "doctor_complete_settings": "/api/doctor/settings/complete"
         }
     })
 
