@@ -103,11 +103,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = user.email || user.cnic || "Logged in user";
 
     if (loggedInEmail) {
-        loggedInEmail.textContent = email;
+    loggedInEmail.textContent = user.email || user.cnic || role;
     }
 
     if (loggedInRole) {
-        loggedInRole.textContent = role.toUpperCase();
+    loggedInRole.textContent = role.toUpperCase();
     }
 
     if (dashboardTitle) {
@@ -299,6 +299,10 @@ document.addEventListener("DOMContentLoaded", () => {
             result.user ||
             result.data ||
             storedUser;
+
+        if (!currentUser || !currentUser.role) {
+            currentUser = storedUser;
+        }
 
         if (!currentUser || !currentUser.role) {
             redirectToLogin();
