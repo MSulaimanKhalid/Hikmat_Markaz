@@ -8,10 +8,18 @@ document.addEventListener("DOMContentLoaded", () => {
         ? window.HM_CONFIG.LOCAL_API_URL
         : window.HM_CONFIG.PRODUCTION_API_URL;
 
+    let loginMode = "staff";
+
     const loginForm = document.getElementById("loginForm");
     const loginEmail = document.getElementById("loginEmail");
+    const loginCnic = document.getElementById("loginCnic");
     const loginPassword = document.getElementById("loginPassword");
     const loginResult = document.getElementById("loginResult");
+
+    const staffLoginFields = document.getElementById("staffLoginFields");
+    const patientLoginFields = document.getElementById("patientLoginFields");
+    const staffLoginModeButton = document.getElementById("staffLoginModeButton");
+    const patientLoginModeButton = document.getElementById("patientLoginModeButton");
 
     const backendStatusDot = document.getElementById("backendStatusDot");
     const backendStatusText = document.getElementById("backendStatusText");
@@ -21,6 +29,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const syncStatusDot = document.getElementById("syncStatusDot");
     const syncStatusText = document.getElementById("syncStatusText");
+
+    function normalizeCnic(value) {
+        return String(value || "").replace(/\D/g, "").slice(0, 13);
+    }
+
+    function isValidCnic(value) {
+        return /^[0-9]{13}$/.test(value);
+    }
+
+    function setLoginMode(mode) {
+        loginMode = mode;
+
+        if (mode === "staff") {
+            staffLoginFields.classList.remove("hidden");
+            patientLoginFields.classList.add("hidden");
+
+            staffLoginModeButton.classList.add("active");
+            patientLoginModeButton.classList.remove("active");
+
+            loginEmail.required = true;
+            loginCnic.required = false;
+        } else {
+            staffLoginFields.classList.add("hidden");
+            patientLoginFields.classList.remove("hidden");
+
+            staffLoginModeButton.classList.remove("active");
+            patientLoginModeButton.classList.add("active");
+
+            loginEmail.required = false;
+            loginCnic.required = true;
+        }
+
+        showLoginMessage("", "");
+    }
 
     function setStatus(dot, textElement, status, message) {
         if (!dot || !textElement) {
@@ -148,27 +190,55 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loginUser(event) {
         event.preventDefault();
 
-        const email = loginEmail.value.trim().toLowerCase();
         const password = loginPassword.value;
 
-        if (!email || !password) {
-            showLoginMessage("Email and password are required.", "error");
+        if (!password) {
+            showLoginMessage("Password is required.", "error");
             return;
         }
 
         try {
             showLoginMessage("Logging in...", "pending");
 
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    email,
-                    password
-                })
-            });
+            let response;
+
+            if (loginMode === "staff") {
+                const email = loginEmail.value.trim().toLowerCase();
+
+                if (!email) {
+                    showLoginMessage("Email is required.", "error");
+                    return;
+                }
+
+                response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                });
+            } else {
+                const cnic = normalizeCnic(loginCnic.value);
+
+                if (!isValidCnic(cnic)) {
+                    showLoginMessage("Patient CNIC must be exactly 13 digits.", "error");
+                    return;
+                }
+
+                response = await fetch(`${API_BASE_URL}/api/patient/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        cnic,
+                        password
+                    })
+                });
+            }
 
             const result = await response.json();
 
@@ -192,6 +262,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (loginForm) {
         loginForm.addEventListener("submit", loginUser);
     }
+
+    if (staffLoginModeButton) {
+        staffLoginModeButton.addEventListener("click", () => {
+            setLoginMode("staff");
+        });
+    }
+
+    if (patientLoginModeButton) {
+        patientLoginModeButton.addEventListener("click", () => {
+            setLoginMode("patient");
+        });
+    }
+
+    if (loginCnic) {
+        loginCnic.addEventListener("input", () => {
+            loginCnic.value = normalizeCnic(loginCnic.value);
+        });
+    }
+
+    setLoginMode("staff");
 
     checkBackendHealth();
     checkDatabaseHealth();

@@ -1,9 +1,10 @@
 from datetime import date, datetime, time
 from decimal import Decimal
+import json
 
 from flask import Blueprint, request, jsonify, g
 
-from db import fetch_one, fetch_all, execute_query
+from db import fetch_one, fetch_all, execute_query, transaction
 from auth import login_required
 
 
@@ -35,6 +36,8 @@ def make_json_safe(value):
 
 
 def get_patient_by_cnic(cnic):
+    normalized_cnic = "".join(ch for ch in cnic if ch.isdigit())
+
     return fetch_one("""
         select
             patient_id,
@@ -51,7 +54,7 @@ def get_patient_by_cnic(cnic):
         from public.patient
         where cnic = %s
         limit 1
-    """, (cnic,))
+    """, (normalized_cnic,))
 
 
 def get_completed_visits_for_patient(patient_id):
@@ -162,10 +165,10 @@ def get_dynamic_values_for_visit(visit_id):
             vfv.visit_id,
             vfv.field_id,
             vfv.value_text,
-            dff.field_label,
-            dff.field_key,
-            dff.field_type,
-            dff.field_context
+            coalesce(vfv.field_label_snapshot, dff.field_label) as field_label,
+            coalesce(vfv.field_type_snapshot, dff.field_type) as field_type,
+            coalesce(vfv.field_context_snapshot, dff.field_context) as field_context,
+            dff.field_key
         from public.visit_field_value vfv
         left join public.doctor_form_field dff
           on dff.field_id = vfv.field_id
@@ -227,7 +230,7 @@ def get_prescriptions_by_cnic():
 
 
 @prescription_bp.get("/visits/<int:visit_id>")
-@login_required(allowed_roles=["pa", "doctor", "admin"])
+@login_required(allowed_roles=["pa", "doctor", "admin", "patient"])
 def get_prescription_by_visit(visit_id):
     prescription = get_prescription_detail_by_visit(visit_id)
 
@@ -242,6 +245,20 @@ def get_prescription_by_visit(visit_id):
             "status": "error",
             "message": "Prescription is available only after consultation is completed."
         }), 409
+
+    if g.current_user["role"] == "patient":
+        patient_owner = fetch_one("""
+            select patient_id
+            from public.patient
+            where user_id = %s
+            limit 1
+        """, (g.current_user["user_id"],))
+
+        if not patient_owner or patient_owner["patient_id"] != prescription["patient_id"]:
+            return jsonify({
+                "status": "error",
+                "message": "You are not allowed to view this prescription."
+            }), 403
 
     dynamic_values = get_dynamic_values_for_visit(visit_id)
     print_logs = get_print_logs_for_visit(visit_id)
@@ -274,34 +291,93 @@ def log_prescription_print(visit_id):
             "message": "Only completed prescriptions can be printed."
         }), 409
 
-    rows = execute_query("""
-        insert into public.prescription_print_log
-        (
-            visit_id,
-            appointment_id,
-            patient_id,
-            printed_by_user_id,
-            printed_by_role
-        )
-        values (%s, %s, %s, %s, %s)
-        returning
-            log_id,
-            visit_id,
-            appointment_id,
-            patient_id,
-            printed_by_user_id,
-            printed_by_role,
-            printed_at
-    """, (
-        prescription["visit_id"],
-        prescription["appointment_id"],
-        prescription["patient_id"],
-        g.current_user["user_id"],
-        g.current_user["role"]
-    ))
+    dynamic_values = get_dynamic_values_for_visit(visit_id)
 
-    return jsonify({
-        "status": "ok",
-        "message": "Prescription print logged.",
-        "data": make_json_safe(rows[0] if rows else None)
+    snapshot_payload = make_json_safe({
+        "prescription": prescription,
+        "dynamic_values": dynamic_values,
+        "snapshot_created_at": datetime.utcnow().isoformat(),
+        "snapshot_created_by_user_id": g.current_user["user_id"],
+        "snapshot_created_by_role": g.current_user["role"]
     })
+
+    try:
+        with transaction() as cursor:
+            cursor.execute("""
+                insert into public.prescription_print_log
+                (
+                    visit_id,
+                    appointment_id,
+                    patient_id,
+                    printed_by_user_id,
+                    printed_by_role
+                )
+                values (%s, %s, %s, %s, %s)
+                returning
+                    log_id,
+                    visit_id,
+                    appointment_id,
+                    patient_id,
+                    printed_by_user_id,
+                    printed_by_role,
+                    printed_at
+            """, (
+                prescription["visit_id"],
+                prescription["appointment_id"],
+                prescription["patient_id"],
+                g.current_user["user_id"],
+                g.current_user["role"]
+            ))
+
+            print_log = dict(cursor.fetchone())
+
+            cursor.execute("""
+                insert into public.prescription_snapshot
+                (
+                    visit_id,
+                    appointment_id,
+                    patient_id,
+                    doctor_id,
+                    snapshot_json,
+                    created_by_user_id,
+                    created_by_role
+                )
+                values (%s, %s, %s, %s, %s::jsonb, %s, %s)
+                returning
+                    snapshot_id,
+                    visit_id,
+                    appointment_id,
+                    patient_id,
+                    doctor_id,
+                    created_by_user_id,
+                    created_by_role,
+                    created_at
+            """, (
+                prescription["visit_id"],
+                prescription["appointment_id"],
+                prescription["patient_id"],
+                prescription["doctor_id"],
+                json.dumps(snapshot_payload),
+                g.current_user["user_id"],
+                g.current_user["role"]
+            ))
+
+            snapshot = dict(cursor.fetchone())
+
+        return jsonify({
+            "status": "ok",
+            "message": "Prescription print logged and snapshot saved.",
+            "data": make_json_safe({
+                "print_log": print_log,
+                "snapshot": snapshot
+            })
+        })
+
+    except Exception as error:
+        print("PRESCRIPTION SNAPSHOT ERROR:", str(error))
+
+        return jsonify({
+            "status": "error",
+            "message": "Prescription print logging failed.",
+            "error": str(error)
+        }), 500

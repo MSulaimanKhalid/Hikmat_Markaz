@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Signup Request - Hikmat Markaz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <main class="landing-page">
+
+        <section class="landing-header">
+            <div class="brand-badge">Hikmat Markaz</div>
+
+            <h1>Doctor Signup Request</h1>
+
+            <p class="slogan">
+                Submit your request. Admin approval is required before login access is enabled.
+            </p>
+        </section>
+
+        <section class="auth-card wider-auth-card">
+
+            <div class="auth-card-header">
+                <h2>Request Doctor Account</h2>
+                <p>
+                    Your request will be reviewed by the admin.
+                </p>
+            </div>
+
+            <form id="doctorSignupForm">
+
+                <label>Full Name</label>
+                <input
+                    id="doctorSignupName"
+                    type="text"
+                    placeholder="Doctor full name"
+                    required
+                >
+
+                <label>CNIC</label>
+                <input
+                    id="doctorSignupCnic"
+                    type="text"
+                    placeholder="13 digit CNIC"
+                    maxlength="13"
+                    inputmode="numeric"
+                >
+
+                <label>Email</label>
+                <input
+                    id="doctorSignupEmail"
+                    type="email"
+                    placeholder="doctor@example.com"
+                    required
+                >
+
+                <label>Phone</label>
+                <input
+                    id="doctorSignupPhone"
+                    type="text"
+                    placeholder="03001234567"
+                    maxlength="11"
+                    inputmode="numeric"
+                >
+
+                <label>Specialization</label>
+                <input
+                    id="doctorSignupSpecialization"
+                    type="text"
+                    placeholder="Cardiologist, Dermatologist, Gynecologist etc."
+                    required
+                >
+
+                <label>License Number</label>
+                <input
+                    id="doctorSignupLicense"
+                    type="text"
+                    placeholder="PMDC / license number"
+                    required
+                >
+
+                <label>Password</label>
+                <input
+                    id="doctorSignupPassword"
+                    type="password"
+                    placeholder="Minimum 8 characters"
+                    required
+                >
+
+                <label>Confirm Password</label>
+                <input
+                    id="doctorSignupConfirmPassword"
+                    type="password"
+                    placeholder="Repeat password"
+                    required
+                >
+
+                <button type="submit">Submit Doctor Request</button>
+            </form>
+
+            <div id="doctorSignupResult" class="form-result"></div>
+
+            <div class="back-link-box">
+                <a href="./index.html">Back to Login</a>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/data-integrity.js"></script>
+    <script src="./js/doctor-signup.js"></script>
+</body>
+</html>

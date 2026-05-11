@@ -16,17 +16,34 @@ from pa_workspace_routes import pa_workspace_bp
 from doctor_queue_routes import doctor_queue_bp
 from prescription_routes import prescription_bp
 from patient_portal_routes import patient_portal_bp, pa_online_requests_bp
+from doctor_appointment_finance_routes import doctor_appointment_finance_bp
+from payment_routes import payment_bp
 
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("APP_SECRET_KEY", "dev-secret-key")
+
+APP_SECRET_KEY = os.getenv("APP_SECRET_KEY", "dev-secret-key-change-this-now")
+APP_ENV = os.getenv("APP_ENV", "development")
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+
+app.config["SECRET_KEY"] = APP_SECRET_KEY
+
+
+if CORS_ALLOWED_ORIGINS == "*":
+    allowed_origins = "*"
+else:
+    allowed_origins = [
+        origin.strip()
+        for origin in CORS_ALLOWED_ORIGINS.split(",")
+        if origin.strip()
+    ]
 
 
 CORS(
     app,
-    resources={r"/*": {"origins": "*"}},
+    resources={r"/*": {"origins": allowed_origins}},
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Content-Type", "Authorization"],
@@ -38,7 +55,7 @@ CORS(
 def handle_preflight_request():
     if request.method == "OPTIONS":
         response = make_response("", 204)
-        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Max-Age"] = "86400"
@@ -47,7 +64,7 @@ def handle_preflight_request():
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     return response
@@ -55,7 +72,7 @@ def add_cors_headers(response):
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*",
+    cors_allowed_origins=allowed_origins,
     async_mode="threading"
 )
 
@@ -70,6 +87,8 @@ app.register_blueprint(doctor_queue_bp)
 app.register_blueprint(prescription_bp)
 app.register_blueprint(patient_portal_bp)
 app.register_blueprint(pa_online_requests_bp)
+app.register_blueprint(doctor_appointment_finance_bp)
+app.register_blueprint(payment_bp)
 
 
 @app.get("/")
@@ -77,12 +96,14 @@ def root():
     return jsonify({
         "status": "ok",
         "message": "Hikmat Markaz backend API is running",
+        "environment": APP_ENV,
         "docs": {
             "health": "/api/health",
             "database": "/api/health/db",
             "sync": "/api/sync/ping",
 
             "login": "/api/auth/login",
+            "patient_login": "/api/patient/login",
             "me": "/api/auth/me",
 
             "doctor_signup": "/api/doctors/signup",
@@ -92,49 +113,23 @@ def root():
             "admin_all_doctors": "/api/admin/doctors",
             "admin_dashboard_summary": "/api/admin/dashboard-summary",
 
-            "doctor_me": "/api/doctor/me",
             "doctor_settings": "/api/doctor/settings",
-            "doctor_add_hospital": "/api/doctor/hospitals",
-            "doctor_add_schedule": "/api/doctor/hospitals/<hospital_id>/schedules",
-            "doctor_delete_schedule": "/api/doctor/schedules/<schedule_id>",
-            "doctor_add_form_field": "/api/doctor/form-fields",
-            "doctor_complete_settings": "/api/doctor/settings/complete",
-
-            "doctor_pa_links": "/api/doctor/pa-links",
-            "doctor_pa_invites": "/api/doctor/pa-invites",
-            "public_pa_invite": "/api/pa/invites/<invite_token>",
-            "accept_pa_invite": "/api/pa/invites/<invite_token>/accept",
-
-            "pa_me": "/api/pa/me",
-            "pa_assignments": "/api/pa/assignments",
-            "pa_patient_search": "/api/pa/patients/search?cnic=",
-            "pa_available_slots": "/api/pa/available-slots?assignment_id=",
-            "pa_create_appointment": "/api/pa/appointments",
-            "pa_appointments": "/api/pa/appointments?date=",
-            "pa_online_requests": "/api/pa/appointment-requests",
-            "pa_confirm_online_request": "/api/pa/appointment-requests/<request_id>/confirm",
-            "pa_reject_online_request": "/api/pa/appointment-requests/<request_id>/reject",
-
-            "doctor_queue_filters": "/api/doctor/queue/filters",
             "doctor_queue": "/api/doctor/queue?date=",
-            "doctor_mark_paid": "/api/doctor/appointments/<appointment_id>/mark-paid",
-            "doctor_prioritize": "/api/doctor/appointments/<appointment_id>/prioritize",
-            "doctor_start_consultation": "/api/doctor/appointments/<appointment_id>/start",
-            "doctor_consultation_details": "/api/doctor/appointments/<appointment_id>/consultation",
-            "doctor_complete_consultation": "/api/doctor/appointments/<appointment_id>/complete",
+            "doctor_appointments": "/api/doctor/appointments",
+            "doctor_finance_summary": "/api/doctor/finance/summary",
+
+            "unified_payment_update": "/api/appointments/<appointment_id>/payment",
 
             "prescriptions_by_cnic": "/api/prescriptions/by-cnic?cnic=",
             "prescription_by_visit": "/api/prescriptions/visits/<visit_id>",
             "prescription_print_log": "/api/prescriptions/visits/<visit_id>/print-log",
 
             "patient_signup": "/api/patient/signup",
-            "patient_login": "/api/patient/login",
-            "patient_me": "/api/patient/me",
             "patient_appointments": "/api/patient/appointments",
             "patient_prescriptions": "/api/patient/prescriptions",
-            "patient_doctors": "/api/patient/doctors",
-            "patient_available_slots": "/api/patient/available-slots?doctor_hospital_id=",
-            "patient_create_appointment_request": "/api/patient/appointment-requests"
+            "patient_create_appointment_request": "/api/patient/appointment-requests",
+
+            "pa_online_requests": "/api/pa/appointment-requests"
         }
     })
 
@@ -144,6 +139,7 @@ def health_check():
     return jsonify({
         "status": "ok",
         "message": "Hikmat Markaz backend is running",
+        "environment": APP_ENV,
         "server_time": datetime.now(timezone.utc).isoformat()
     })
 
@@ -210,6 +206,7 @@ def handle_socket_disconnect():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
+    debug_enabled = APP_ENV != "production"
 
     print(f"Starting Hikmat Markaz backend on http://127.0.0.1:{port}")
 
@@ -217,6 +214,6 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=port,
-        debug=True,
+        debug=debug_enabled,
         allow_unsafe_werkzeug=True
     )

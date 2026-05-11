@@ -4,28 +4,21 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.hostname === "localhost" ||
         window.location.protocol === "file:";
 
-    const API_BASE_URL = isLocalFrontend
-        ? window.HM_CONFIG.LOCAL_API_URL
-        : window.HM_CONFIG.PRODUCTION_API_URL;
-
-    const token = localStorage.getItem("hm_token");
-    const userRaw = localStorage.getItem("hm_user");
-
-    if (!token || !userRaw) {
-        window.location.href = "./index.html";
-        return;
-    }
-
-    const user = JSON.parse(userRaw);
-
-    let doctorHospitalsCache = [];
-    let paAssignmentsCache = [];
-    let selectedAppointmentSlot = null;
+    const API_BASE_URL =
+        window.HM_CONFIG && window.HM_CONFIG.LOCAL_API_URL && window.HM_CONFIG.PRODUCTION_API_URL
+            ? (
+                isLocalFrontend
+                    ? window.HM_CONFIG.LOCAL_API_URL
+                    : window.HM_CONFIG.PRODUCTION_API_URL
+            )
+            : "http://127.0.0.1:5000";
 
     const dashboardTitle = document.getElementById("dashboardTitle");
     const dashboardSubtitle = document.getElementById("dashboardSubtitle");
-    const loggedInRole = document.getElementById("loggedInRole");
+    const dashboardMessage = document.getElementById("dashboardMessage");
+
     const loggedInEmail = document.getElementById("loggedInEmail");
+    const loggedInRole = document.getElementById("loggedInRole");
     const logoutButton = document.getElementById("logoutButton");
 
     const adminDashboard = document.getElementById("adminDashboard");
@@ -33,113 +26,129 @@ document.addEventListener("DOMContentLoaded", () => {
     const paDashboard = document.getElementById("paDashboard");
     const patientDashboard = document.getElementById("patientDashboard");
 
-    const refreshPendingDoctorsButton = document.getElementById("refreshPendingDoctorsButton");
-    const pendingDoctorsList = document.getElementById("pendingDoctorsList");
-    const adminMessage = document.getElementById("adminMessage");
-
-    const pendingDoctorsCount = document.getElementById("pendingDoctorsCount");
-    const approvedDoctorsCount = document.getElementById("approvedDoctorsCount");
-    const rejectedDoctorsCount = document.getElementById("rejectedDoctorsCount");
-
-    const doctorModuleTabs = document.querySelectorAll(".doctor-module-tab");
-    const doctorModulePanels = document.querySelectorAll(".doctor-module-panel");
-
-    const refreshDoctorSettingsButton = document.getElementById("refreshDoctorSettingsButton");
-    const doctorSettingsMessage = document.getElementById("doctorSettingsMessage");
-
-    const hospitalForm = document.getElementById("hospitalForm");
-    const hospitalName = document.getElementById("hospitalName");
-    const hospitalAddress = document.getElementById("hospitalAddress");
-    const hospitalCity = document.getElementById("hospitalCity");
-
-    const scheduleForm = document.getElementById("scheduleForm");
-    const scheduleHospital = document.getElementById("scheduleHospital");
-    const scheduleStartTime = document.getElementById("scheduleStartTime");
-    const scheduleEndTime = document.getElementById("scheduleEndTime");
-    const scheduleDuration = document.getElementById("scheduleDuration");
-    const scheduleFee = document.getElementById("scheduleFee");
-
-    const formFieldForm = document.getElementById("formFieldForm");
-    const fieldContext = document.getElementById("fieldContext");
-    const fieldLabel = document.getElementById("fieldLabel");
-    const fieldType = document.getElementById("fieldType");
-    const fieldPlaceholder = document.getElementById("fieldPlaceholder");
-    const fieldHelpText = document.getElementById("fieldHelpText");
-    const fieldRequired = document.getElementById("fieldRequired");
-
-    const doctorHospitalsList = document.getElementById("doctorHospitalsList");
-    const doctorSchedulesList = document.getElementById("doctorSchedulesList");
-    const doctorFieldsList = document.getElementById("doctorFieldsList");
-    const completeSettingsButton = document.getElementById("completeSettingsButton");
-
-    const refreshPaDataButton = document.getElementById("refreshPaDataButton");
-    const paMessage = document.getElementById("paMessage");
-    const paInviteForm = document.getElementById("paInviteForm");
-    const paInviteHospital = document.getElementById("paInviteHospital");
-    const paInviteCnic = document.getElementById("paInviteCnic");
-    const paInviteEmail = document.getElementById("paInviteEmail");
-    const linkedPaList = document.getElementById("linkedPaList");
-    const paInviteList = document.getElementById("paInviteList");
-    const latestInviteBox = document.getElementById("latestInviteBox");
-
-    const paModuleTabs = document.querySelectorAll(".pa-module-tab");
-    const paModulePanels = document.querySelectorAll(".pa-module-panel");
-    const refreshPaWorkspaceButton = document.getElementById("refreshPaWorkspaceButton");
-    const paWorkspaceMessage = document.getElementById("paWorkspaceMessage");
-    const paAssignmentsList = document.getElementById("paAssignmentsList");
-    const appointmentAssignment = document.getElementById("appointmentAssignment");
-    const paAppointmentForm = document.getElementById("paAppointmentForm");
-    const patientCnic = document.getElementById("patientCnic");
-    const patientName = document.getElementById("patientName");
-    const patientGender = document.getElementById("patientGender");
-    const patientDob = document.getElementById("patientDob");
-    const patientPhone = document.getElementById("patientPhone");
-    const patientEmail = document.getElementById("patientEmail");
-    const appointmentFeeStatus = document.getElementById("appointmentFeeStatus");
-    const appointmentNotes = document.getElementById("appointmentNotes");
-    const searchPatientButton = document.getElementById("searchPatientButton");
-    const loadSlotsButton = document.getElementById("loadSlotsButton");
-    const availableSlotsList = document.getElementById("availableSlotsList");
-    const selectedSlotBox = document.getElementById("selectedSlotBox");
-    const bookAppointmentButton = document.getElementById("bookAppointmentButton");
-    const paAppointmentsDate = document.getElementById("paAppointmentsDate");
-    const paAppointmentsList = document.getElementById("paAppointmentsList");
-
-    const dayNames = {
-        0: "Sunday",
-        1: "Monday",
-        2: "Tuesday",
-        3: "Wednesday",
-        4: "Thursday",
-        5: "Friday",
-        6: "Saturday"
+    let currentUser = null;
+    let doctorSettingsCache = {
+        hospitals: [],
+        schedules: [],
+        formFields: [],
+        paLinks: [],
+        paInvites: []
     };
 
-    function showMessage(element, message, type) {
-        if (!element) {
-            return;
-        }
+    let paWorkspaceCache = {
+        assignments: [],
+        selectedSlot: null
+    };
 
-        element.textContent = message;
-        element.classList.remove("ok", "error", "pending");
+    function getToken() {
+        return localStorage.getItem("hm_token");
+    }
 
-        if (type) {
-            element.classList.add(type);
+    function getStoredUser() {
+        try {
+            return JSON.parse(localStorage.getItem("hm_user") || "null");
+        } catch (error) {
+            return null;
         }
     }
 
-    async function apiRequest(path, options = {}) {
-        const freshToken = localStorage.getItem("hm_token");
+    function saveSession(token, user) {
+        if (token) {
+            localStorage.setItem("hm_token", token);
+        }
 
-        if (!freshToken) {
-            localStorage.removeItem("hm_user");
-            window.location.href = "./index.html";
-            throw new Error("Login session expired. Please login again.");
+        if (user) {
+            localStorage.setItem("hm_user", JSON.stringify(user));
+        }
+    }
+
+    function clearSession() {
+        localStorage.removeItem("hm_token");
+        localStorage.removeItem("hm_user");
+    }
+
+    function redirectToLogin() {
+        clearSession();
+        window.location.href = "./index.html";
+    }
+
+    function showMessage(message, type) {
+        if (!dashboardMessage) {
+            return;
+        }
+
+        dashboardMessage.textContent = message || "";
+        dashboardMessage.classList.remove("ok", "error", "pending");
+
+        if (type) {
+            dashboardMessage.classList.add(type);
+        }
+    }
+
+    function hideAllDashboards() {
+        [
+            adminDashboard,
+            doctorDashboard,
+            paDashboard,
+            patientDashboard
+        ].forEach((dashboard) => {
+            if (dashboard) {
+                dashboard.classList.add("hidden");
+            }
+        });
+    }
+
+    function setDashboardHeader(user) {
+    const role = user.role || "user";
+    const email = user.email || user.cnic || "Logged in user";
+
+    if (loggedInEmail) {
+        loggedInEmail.textContent = email;
+    }
+
+    if (loggedInRole) {
+        loggedInRole.textContent = role.toUpperCase();
+    }
+
+    if (dashboardTitle) {
+        if (role === "admin") {
+            dashboardTitle.textContent = "Admin Dashboard";
+        } else if (role === "doctor") {
+            dashboardTitle.textContent = "Doctor Dashboard";
+        } else if (role === "pa") {
+            dashboardTitle.textContent = "PA Dashboard";
+        } else if (role === "patient") {
+            dashboardTitle.textContent = "Patient Portal";
+        } else {
+            dashboardTitle.textContent = "Dashboard";
+        }
+    }
+
+    if (dashboardSubtitle) {
+        if (role === "admin") {
+            dashboardSubtitle.textContent = "Review and manage doctor signup requests.";
+        } else if (role === "doctor") {
+            dashboardSubtitle.textContent = "Manage settings, queue, appointments, and finance.";
+        } else if (role === "pa") {
+            dashboardSubtitle.textContent = "Manage bookings, payments, prescriptions, and online requests.";
+        } else if (role === "patient") {
+            dashboardSubtitle.textContent = "View appointments, prescriptions, and request appointments.";
+        } else {
+            dashboardSubtitle.textContent = "Welcome to Hikmat Markaz.";
+        }
+    }
+}
+    async function apiRequest(path, options = {}) {
+        const token = getToken();
+
+        if (!token) {
+            redirectToLogin();
+            throw new Error("Login session expired.");
         }
 
         const headers = {
             ...(options.headers || {}),
-            "Authorization": `Bearer ${freshToken}`
+            "Authorization": `Bearer ${token}`
         };
 
         const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -156,45 +165,46 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!response.ok) {
-            throw new Error(result.error || result.message || "Request failed");
+            console.log("DASHBOARD_API_ERROR:", result);
+            throw new Error(result.error || result.message || "Request failed.");
         }
 
         return result;
     }
 
-    function logout() {
-        localStorage.removeItem("hm_token");
-        localStorage.removeItem("hm_user");
-        window.location.href = "./index.html";
+    function money(value) {
+        const number = Number(value || 0);
+        return `Rs. ${number.toLocaleString()}`;
     }
 
-    function hideAllDashboards() {
-        adminDashboard.classList.add("hidden");
-        doctorDashboard.classList.add("hidden");
-        paDashboard.classList.add("hidden");
-        patientDashboard.classList.add("hidden");
+    function normalizeCnic(value) {
+        return String(value || "").replace(/\D/g, "").slice(0, 13);
     }
 
-    function capitalize(value) {
-        if (!value) {
-            return "";
-        }
+    function normalizePhone(value) {
+        return String(value || "").replace(/\D/g, "").slice(0, 11);
+    }
 
-        return value.charAt(0).toUpperCase() + value.slice(1);
+    function slugify(value) {
+        return String(value || "")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "");
     }
 
     function todayIsoDate() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
 
-    return `${year}-${month}-${day}`;
-}
+        return `${year}-${month}-${day}`;
+    }
 
     function formatDateTime(value) {
         if (!value) {
-            return "";
+            return "N/A";
         }
 
         const date = new Date(value);
@@ -208,1082 +218,1590 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function renderDashboardByRole() {
-        loggedInRole.textContent = user.role;
-        loggedInEmail.textContent = user.email || "No email";
+    function dayName(dayNumber) {
+        const days = {
+            0: "Sunday",
+            1: "Monday",
+            2: "Tuesday",
+            3: "Wednesday",
+            4: "Thursday",
+            5: "Friday",
+            6: "Saturday"
+        };
 
-        dashboardTitle.textContent = `${capitalize(user.role)} Dashboard`;
-        dashboardSubtitle.textContent = `Welcome back, ${user.email || "user"}.`;
+        return days[Number(dayNumber)] || String(dayNumber);
+    }
 
-        hideAllDashboards();
+    function setupRoleTabs(root, tabSelector, panelSelector, tabAttribute) {
+        root.querySelectorAll(tabSelector).forEach((tab) => {
+            tab.addEventListener("click", () => {
+                const targetId = tab.getAttribute(tabAttribute);
 
-        if (user.role === "admin") {
-            adminDashboard.classList.remove("hidden");
-            loadAdminDashboard();
-        }
+                root.querySelectorAll(tabSelector).forEach((item) => {
+                    item.classList.remove("active");
+                });
 
-        if (user.role === "doctor") {
-            doctorDashboard.classList.remove("hidden");
-            loadDoctorSettings();
-        }
+                root.querySelectorAll(panelSelector).forEach((panel) => {
+                    panel.classList.add("hidden");
+                });
 
-        if (user.role === "pa") {
-            paDashboard.classList.remove("hidden");
-            loadPaWorkspace();
-        }
+                tab.classList.add("active");
 
-        if (user.role === "patient") {
-            patientDashboard.classList.remove("hidden");
-        }
+                const targetPanel = document.getElementById(targetId);
+
+                if (targetPanel) {
+                    targetPanel.classList.remove("hidden");
+                }
+            });
+        });
     }
 
     async function verifySession() {
+    const token = getToken();
+
+    if (!token) {
+        redirectToLogin();
+        return;
+    }
+
+    const storedUser = getStoredUser();
+
+    if (!storedUser || !storedUser.role) {
+        redirectToLogin();
+        return;
+    }
+
+    if (storedUser.role === "patient") {
+        currentUser = storedUser;
+
         try {
-            await apiRequest("/api/auth/me");
+            const result = await apiRequest("/api/patient/me");
+
+            currentUser =
+                result.user ||
+                result.data?.user ||
+                storedUser;
         } catch (error) {
-            logout();
+            console.log("PATIENT_SESSION_CHECK_WARNING:", error.message);
+            currentUser = storedUser;
+        }
+
+        saveSession(null, currentUser);
+        setDashboardHeader(currentUser);
+        showDashboardForRole(currentUser);
+        return;
+    }
+
+    try {
+        const result = await apiRequest("/api/auth/me");
+
+        currentUser =
+            result.user ||
+            result.data ||
+            storedUser;
+
+        if (!currentUser || !currentUser.role) {
+            redirectToLogin();
+            return;
+        }
+
+        saveSession(null, currentUser);
+        setDashboardHeader(currentUser);
+        showDashboardForRole(currentUser);
+    } catch (error) {
+        console.log("SESSION_VERIFY_ERROR:", error.message);
+        redirectToLogin();
+    }
+}
+    
+
+function showDashboardForRole(user) {
+    hideAllDashboards();
+
+    if (!user || !user.role) {
+        redirectToLogin();
+        return;
+    }
+
+    if (user.role === "admin") {
+        if (adminDashboard) {
+            adminDashboard.classList.remove("hidden");
+        }
+        return;
+    }
+
+    if (user.role === "doctor") {
+        if (doctorDashboard) {
+            doctorDashboard.classList.remove("hidden");
+        }
+        return;
+    }
+
+    if (user.role === "pa") {
+        if (paDashboard) {
+            paDashboard.classList.remove("hidden");
+        }
+        return;
+    }
+
+    if (user.role === "patient") {
+        if (patientDashboard) {
+            patientDashboard.classList.remove("hidden");
+        }
+        return;
+    }
+
+    redirectToLogin();
+}
+    function buildAdminDashboard() {
+        adminDashboard.innerHTML = `
+            <div class="dashboard-header">
+                <div>
+                    <h2>Admin Control</h2>
+                    <p>Approve doctor requests and review platform activity.</p>
+                </div>
+
+                <button id="refreshAdminDashboardButton" type="button" class="secondary-button">
+                    Refresh
+                </button>
+            </div>
+
+            <div id="adminMessage" class="form-result"></div>
+
+            <div id="adminSummaryCards" class="finance-summary-grid"></div>
+
+            <div class="doctor-module-tabs">
+                <button class="admin-module-tab active" type="button" data-admin-tab="adminPendingDoctorsTab">
+                    Pending Doctors
+                </button>
+
+                <button class="admin-module-tab" type="button" data-admin-tab="adminAllDoctorsTab">
+                    All Doctors
+                </button>
+            </div>
+
+            <section id="adminPendingDoctorsTab" class="admin-module-panel">
+                <div class="settings-list-card">
+                    <h3>Pending Doctor Requests</h3>
+                    <div id="pendingDoctorsList" class="compact-list scroll-list tall-scroll-list">
+                        <p class="muted-text">Loading pending doctors...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="adminAllDoctorsTab" class="admin-module-panel hidden">
+                <div class="settings-list-card">
+                    <h3>All Doctors</h3>
+                    <div id="allDoctorsList" class="compact-list scroll-list tall-scroll-list">
+                        <p class="muted-text">Loading doctors...</p>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        setupRoleTabs(adminDashboard, ".admin-module-tab", ".admin-module-panel", "data-admin-tab");
+
+        const refreshButton = document.getElementById("refreshAdminDashboardButton");
+
+        if (refreshButton) {
+            refreshButton.addEventListener("click", loadAdminDashboard);
+        }
+
+        const pendingDoctorsList = document.getElementById("pendingDoctorsList");
+
+        if (pendingDoctorsList) {
+            pendingDoctorsList.addEventListener("click", handleAdminDoctorAction);
+        }
+
+        loadAdminDashboard();
+    }
+
+    function adminMsg(message, type) {
+        const box = document.getElementById("adminMessage");
+
+        if (!box) {
+            return;
+        }
+
+        box.textContent = message || "";
+        box.classList.remove("ok", "error", "pending");
+
+        if (type) {
+            box.classList.add(type);
         }
     }
 
-    function switchDoctorModule(tabId) {
-        doctorModuleTabs.forEach((tab) => {
-            tab.classList.remove("active");
+    async function loadAdminDashboard() {
+        try {
+            adminMsg("Loading admin dashboard...", "pending");
 
-            if (tab.getAttribute("data-doctor-tab") === tabId) {
-                tab.classList.add("active");
-            }
-        });
+            await Promise.all([
+                loadAdminSummary(),
+                loadPendingDoctors(),
+                loadAllDoctors()
+            ]);
 
-        doctorModulePanels.forEach((panel) => {
-            panel.classList.add("hidden");
-
-            if (panel.id === tabId) {
-                panel.classList.remove("hidden");
-            }
-        });
-
-        if (tabId === "doctorPaTab") {
-            loadDoctorPaData();
-        }
-
-        if (tabId === "doctorSettingsTab") {
-            loadDoctorSettings();
-        }
-    }
-
-    function switchPaModule(tabId) {
-        paModuleTabs.forEach((tab) => {
-            tab.classList.remove("active");
-
-            if (tab.getAttribute("data-pa-tab") === tabId) {
-                tab.classList.add("active");
-            }
-        });
-
-        paModulePanels.forEach((panel) => {
-            panel.classList.add("hidden");
-
-            if (panel.id === tabId) {
-                panel.classList.remove("hidden");
-            }
-        });
-
-        if (tabId === "paAssignmentsTab") {
-            loadPaAssignments();
-        }
-
-        if (tabId === "paAppointmentsTab") {
-            loadPaAppointments();
+            adminMsg("Admin dashboard loaded.", "ok");
+        } catch (error) {
+            adminMsg(error.message, "error");
         }
     }
 
     async function loadAdminSummary() {
-        const result = await apiRequest("/api/admin/dashboard-summary");
+        const summaryCards = document.getElementById("adminSummaryCards");
 
-        pendingDoctorsCount.textContent = result.data.pending_doctors || 0;
-        approvedDoctorsCount.textContent = result.data.approved_doctors || 0;
-        rejectedDoctorsCount.textContent = result.data.rejected_doctors || 0;
-    }
-
-    async function loadPendingDoctors() {
-        showMessage(adminMessage, "Loading pending doctor requests...", "pending");
-
-        const result = await apiRequest("/api/admin/doctors/pending");
-        const doctors = result.data || [];
-
-        if (doctors.length === 0) {
-            pendingDoctorsList.innerHTML = `<p class="muted-text">No pending doctor requests.</p>`;
-            showMessage(adminMessage, "No pending requests found.", "ok");
+        if (!summaryCards) {
             return;
         }
 
-        pendingDoctorsList.innerHTML = doctors.map((doctor) => {
-            return `
-                <div class="doctor-card" data-doctor-id="${doctor.doctor_id}">
-                    <h4>${doctor.name}</h4>
+        try {
+            const result = await apiRequest("/api/admin/dashboard-summary");
+            const data = result.data || result.summary || {};
 
-                    <div class="doctor-meta">
-                        <span><strong>Specialization:</strong> ${doctor.specialization}</span>
-                        <span><strong>License:</strong> ${doctor.license_number}</span>
-                        <span><strong>Email:</strong> ${doctor.email}</span>
-                        <span><strong>Phone:</strong> ${doctor.phone || "Not provided"}</span>
-                        <span><strong>Status:</strong> ${doctor.approval_status}</span>
+            const cards = [
+                {
+                    label: "Pending Doctors",
+                    value: data.pending_doctors || data.pendingDoctors || 0
+                },
+                {
+                    label: "Approved Doctors",
+                    value: data.approved_doctors || data.approvedDoctors || 0
+                },
+                {
+                    label: "Total Doctors",
+                    value: data.total_doctors || data.totalDoctors || 0
+                },
+                {
+                    label: "Total Users",
+                    value: data.total_users || data.totalUsers || 0
+                }
+            ];
+
+            summaryCards.innerHTML = cards.map((card) => {
+                return `
+                    <div class="finance-card">
+                        <span>${card.label}</span>
+                        <strong>${card.value}</strong>
                     </div>
+                `;
+            }).join("");
+        } catch (error) {
+            summaryCards.innerHTML = `
+                <div class="finance-card">
+                    <span>Summary</span>
+                    <strong>N/A</strong>
+                </div>
+            `;
+        }
+    }
 
-                    <textarea
-                        class="reject-reason"
-                        placeholder="Write rejection reason if you want to reject this request"
-                    ></textarea>
+    async function loadPendingDoctors() {
+        const list = document.getElementById("pendingDoctorsList");
 
-                    <div class="doctor-actions">
-                        <button type="button" class="approve-doctor-button">
+        if (!list) {
+            return;
+        }
+
+        const result = await apiRequest("/api/admin/doctors/pending");
+        const doctors = result.data || result.doctors || [];
+
+        if (!doctors.length) {
+            list.innerHTML = `<p class="muted-text">No pending doctor requests.</p>`;
+            return;
+        }
+
+        list.innerHTML = doctors.map((doctor) => {
+            return `
+                <div class="compact-item" data-doctor-id="${doctor.doctor_id}">
+                    <strong>${doctor.name || doctor.full_name || "Unnamed Doctor"}</strong>
+                    <span>Email: ${doctor.email || doctor.login_email || "N/A"}</span>
+                    <span>CNIC: ${doctor.cnic || "N/A"}</span>
+                    <span>Phone: ${doctor.phone || "N/A"}</span>
+                    <span>Specialization: ${doctor.specialization || "N/A"}</span>
+                    <span>License: ${doctor.license_number || "N/A"}</span>
+                    <span>Status: ${doctor.approval_status || "pending"}</span>
+
+                    <div class="queue-card-actions">
+                        <button type="button" data-action="approve-doctor">
                             Approve
                         </button>
 
-                        <button type="button" class="danger-button reject-doctor-button">
+                        <button type="button" class="danger-button" data-action="reject-doctor">
                             Reject
                         </button>
                     </div>
                 </div>
             `;
         }).join("");
-
-        showMessage(adminMessage, `${doctors.length} pending request(s) loaded.`, "ok");
     }
 
-    async function loadAdminDashboard() {
-        try {
-            await loadAdminSummary();
-            await loadPendingDoctors();
-        } catch (error) {
-            showMessage(adminMessage, error.message, "error");
-        }
-    }
+    async function loadAllDoctors() {
+        const list = document.getElementById("allDoctorsList");
 
-    async function approveDoctor(doctorId) {
-        try {
-            showMessage(adminMessage, "Approving doctor...", "pending");
-
-            const result = await apiRequest(`/api/admin/doctors/${doctorId}/approve`, {
-                method: "POST"
-            });
-
-            showMessage(adminMessage, result.message, "ok");
-            await loadAdminDashboard();
-        } catch (error) {
-            showMessage(adminMessage, error.message, "error");
-        }
-    }
-
-    async function rejectDoctor(doctorId, reason) {
-        if (!reason.trim()) {
-            showMessage(adminMessage, "Rejection reason is required.", "error");
+        if (!list) {
             return;
         }
 
-        try {
-            showMessage(adminMessage, "Rejecting doctor request...", "pending");
+        const result = await apiRequest("/api/admin/doctors");
+        const doctors = result.data || result.doctors || [];
 
-            const result = await apiRequest(`/api/admin/doctors/${doctorId}/reject`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    rejection_reason: reason.trim()
-                })
-            });
-
-            showMessage(adminMessage, result.message, "ok");
-            await loadAdminDashboard();
-        } catch (error) {
-            showMessage(adminMessage, error.message, "error");
+        if (!doctors.length) {
+            list.innerHTML = `<p class="muted-text">No doctors found.</p>`;
+            return;
         }
+
+        list.innerHTML = doctors.map((doctor) => {
+            return `
+                <div class="compact-item">
+                    <strong>${doctor.name || doctor.full_name || "Unnamed Doctor"}</strong>
+                    <span>Email: ${doctor.email || doctor.login_email || "N/A"}</span>
+                    <span>CNIC: ${doctor.cnic || "N/A"}</span>
+                    <span>Specialization: ${doctor.specialization || "N/A"}</span>
+                    <span>License: ${doctor.license_number || "N/A"}</span>
+                    <span>Status: ${doctor.approval_status || "N/A"}</span>
+                    <span>Settings Completed: ${doctor.settings_completed ? "Yes" : "No"}</span>
+                </div>
+            `;
+        }).join("");
     }
 
-    function handleDoctorListClick(event) {
-        const card = event.target.closest(".doctor-card");
+    async function handleAdminDoctorAction(event) {
+        const button = event.target.closest("button[data-action]");
+
+        if (!button) {
+            return;
+        }
+
+        const card = event.target.closest("[data-doctor-id]");
 
         if (!card) {
             return;
         }
 
         const doctorId = card.getAttribute("data-doctor-id");
-        const rejectReason = card.querySelector(".reject-reason");
+        const action = button.getAttribute("data-action");
 
-        if (event.target.classList.contains("approve-doctor-button")) {
-            approveDoctor(doctorId);
+        try {
+            if (action === "approve-doctor") {
+                adminMsg("Approving doctor...", "pending");
+
+                await apiRequest(`/api/admin/doctors/${doctorId}/approve`, {
+                    method: "POST"
+                });
+
+                adminMsg("Doctor approved.", "ok");
+            }
+
+            if (action === "reject-doctor") {
+                const reason = window.prompt("Reason for rejection", "Incomplete or invalid information");
+
+                if (reason === null) {
+                    return;
+                }
+
+                adminMsg("Rejecting doctor...", "pending");
+
+                await apiRequest(`/api/admin/doctors/${doctorId}/reject`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        rejection_reason: reason
+                    })
+                });
+
+                adminMsg("Doctor rejected.", "ok");
+            }
+
+            await loadAdminDashboard();
+        } catch (error) {
+            adminMsg(error.message, "error");
+        }
+    }
+
+    function buildDoctorDashboard() {
+        doctorDashboard.innerHTML = `
+            <div class="dashboard-header">
+                <div>
+                    <h2>Doctor Workspace</h2>
+                    <p>Manage your hospitals, schedules, assistants, fields, appointments, consultations, and finance.</p>
+                </div>
+
+                <button id="refreshDoctorDashboardButton" type="button" class="secondary-button">
+                    Refresh
+                </button>
+            </div>
+
+            <div id="doctorDashboardMessage" class="form-result"></div>
+
+            <div class="doctor-module-tabs">
+                <button class="doctor-module-tab active" type="button" data-doctor-tab="doctorSettingsTab">
+                    Settings
+                </button>
+
+                <button class="doctor-module-tab" type="button" data-doctor-tab="doctorPaTab">
+                    PA List
+                </button>
+            </div>
+
+            <section id="doctorSettingsTab" class="doctor-module-panel">
+                <div class="doctor-settings-grid">
+                    <div class="settings-card">
+                        <h3>Add Hospital / Clinic</h3>
+
+                        <form id="doctorHospitalForm">
+                            <label>Hospital / Clinic Name</label>
+                            <input id="doctorHospitalName" type="text" placeholder="Hospital or clinic name" required>
+
+                            <label>City</label>
+                            <input id="doctorHospitalCity" type="text" placeholder="City">
+
+                            <label>Address</label>
+                            <textarea id="doctorHospitalAddress" placeholder="Complete address"></textarea>
+
+                            <button type="submit">Add Hospital</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Add Schedule</h3>
+
+                        <form id="doctorScheduleForm">
+                            <label>Hospital / Clinic</label>
+                            <select id="doctorScheduleHospital" required>
+                                <option value="">Select hospital</option>
+                            </select>
+
+                            <label>Days</label>
+                            <div id="doctorScheduleDays" class="checkbox-grid">
+                                <label><input type="checkbox" value="0"> Sunday</label>
+                                <label><input type="checkbox" value="1"> Monday</label>
+                                <label><input type="checkbox" value="2"> Tuesday</label>
+                                <label><input type="checkbox" value="3"> Wednesday</label>
+                                <label><input type="checkbox" value="4"> Thursday</label>
+                                <label><input type="checkbox" value="5"> Friday</label>
+                                <label><input type="checkbox" value="6"> Saturday</label>
+                            </div>
+
+                            <label>Start Time</label>
+                            <input id="doctorScheduleStart" type="time" required>
+
+                            <label>End Time</label>
+                            <input id="doctorScheduleEnd" type="time" required>
+
+                            <label>Default Consultation Minutes</label>
+                            <input id="doctorScheduleDuration" type="number" value="15" min="1" required>
+
+                            <label>Consultation Fee</label>
+                            <input id="doctorScheduleFee" type="number" value="0" min="0" required>
+
+                            <button type="submit">Add Schedule</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Add Dynamic Consultation Field</h3>
+
+                        <form id="doctorFieldForm">
+                            <label>Field Label</label>
+                            <input id="doctorFieldLabel" type="text" placeholder="Example: Pregnancy Month" required>
+
+                            <label>Field Type</label>
+                            <select id="doctorFieldType">
+                                <option value="text">Text</option>
+                                <option value="number">Number</option>
+                                <option value="date">Date</option>
+                                <option value="textarea">Long Text</option>
+                            </select>
+
+                            <label>Context</label>
+                            <select id="doctorFieldContext">
+                                <option value="consultation">Consultation</option>
+                                <option value="patient">Patient</option>
+                            </select>
+
+                            <label>Required?</label>
+                            <select id="doctorFieldRequired">
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+
+                            <button type="submit">Add Field</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="doctor-settings-grid">
+                    <div class="settings-list-card">
+                        <h3>Hospitals / Clinics</h3>
+                        <div id="doctorHospitalsList" class="compact-list scroll-list">
+                            <p class="muted-text">No hospitals loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Schedules</h3>
+                        <div id="doctorSchedulesList" class="compact-list scroll-list tall-scroll-list">
+                            <p class="muted-text">No schedules loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Dynamic Fields</h3>
+                        <div id="doctorFieldsList" class="compact-list scroll-list">
+                            <p class="muted-text">No fields loaded.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="doctorPaTab" class="doctor-module-panel hidden">
+                <div class="doctor-settings-grid">
+                    <div class="settings-card">
+                        <h3>Invite / Link PA</h3>
+
+                        <form id="doctorPaInviteForm">
+                            <label>PA CNIC</label>
+                            <input id="doctorPaCnic" type="text" placeholder="13 digit CNIC" maxlength="13" inputmode="numeric" required>
+
+                            <label>PA Email</label>
+                            <input id="doctorPaEmail" type="email" placeholder="pa@example.com" required>
+
+                            <label>Hospital / Clinic</label>
+                            <select id="doctorPaHospital" required>
+                                <option value="">Select hospital</option>
+                            </select>
+
+                            <button type="submit">Invite / Link PA</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Linked PAs</h3>
+                        <div id="doctorPaLinksList" class="compact-list scroll-list tall-scroll-list">
+                            <p class="muted-text">No PA links loaded.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>PA Invites</h3>
+                        <div id="doctorPaInvitesList" class="compact-list scroll-list tall-scroll-list">
+                            <p class="muted-text">No PA invites loaded.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        setupRoleTabs(doctorDashboard, ".doctor-module-tab", ".doctor-module-panel", "data-doctor-tab");
+
+        document.getElementById("refreshDoctorDashboardButton").addEventListener("click", loadDoctorDashboard);
+        document.getElementById("doctorHospitalForm").addEventListener("submit", addDoctorHospital);
+        document.getElementById("doctorScheduleForm").addEventListener("submit", addDoctorSchedule);
+        document.getElementById("doctorFieldForm").addEventListener("submit", addDoctorField);
+        document.getElementById("doctorPaInviteForm").addEventListener("submit", inviteOrLinkPa);
+
+        const schedulesList = document.getElementById("doctorSchedulesList");
+
+        if (schedulesList) {
+            schedulesList.addEventListener("click", handleScheduleAction);
         }
 
-        if (event.target.classList.contains("reject-doctor-button")) {
-            rejectDoctor(doctorId, rejectReason.value);
+        loadDoctorDashboard();
+    }
+
+    function doctorMsg(message, type) {
+        const box = document.getElementById("doctorDashboardMessage");
+
+        if (!box) {
+            return;
+        }
+
+        box.textContent = message || "";
+        box.classList.remove("ok", "error", "pending");
+
+        if (type) {
+            box.classList.add(type);
+        }
+    }
+
+    async function loadDoctorDashboard() {
+        try {
+            doctorMsg("Loading doctor workspace...", "pending");
+
+            await Promise.all([
+                loadDoctorSettings(),
+                loadDoctorPaData()
+            ]);
+
+            doctorMsg("Doctor workspace loaded.", "ok");
+        } catch (error) {
+            doctorMsg(error.message, "error");
         }
     }
 
     async function loadDoctorSettings() {
-        try {
-            showMessage(doctorSettingsMessage, "Loading doctor settings...", "pending");
+        const result = await apiRequest("/api/doctor/settings");
+        const data = result.data || result;
 
-            const result = await apiRequest("/api/doctor/settings");
-            const data = result.data;
+        doctorSettingsCache.hospitals =
+            data.hospitals ||
+            data.doctor_hospitals ||
+            data.doctorHospitals ||
+            [];
 
-            doctorHospitalsCache = data.hospitals || [];
+        doctorSettingsCache.schedules =
+            data.schedules ||
+            data.hospital_schedules ||
+            data.doctor_hospital_schedules ||
+            [];
 
-            renderDoctorHospitals(data.hospitals || []);
-            renderDoctorSchedules(data.schedules || []);
-            renderDoctorFields(data.form_fields || []);
-            renderPaHospitalOptions(data.hospitals || []);
+        doctorSettingsCache.formFields =
+            data.form_fields ||
+            data.formFields ||
+            data.dynamic_fields ||
+            [];
 
-            showMessage(doctorSettingsMessage, "Doctor settings loaded.", "ok");
-        } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
-        }
+        renderDoctorHospitals();
+        renderDoctorScheduleHospitalOptions();
+        renderDoctorSchedules();
+        renderDoctorFields();
     }
 
-    function renderDoctorHospitals(hospitals) {
-        if (!hospitals.length) {
-            doctorHospitalsList.innerHTML = `<p class="muted-text">No hospitals/clinics added yet.</p>`;
-            scheduleHospital.innerHTML = `<option value="">Select hospital</option>`;
+    function renderDoctorHospitals() {
+        const list = document.getElementById("doctorHospitalsList");
+
+        if (!list) {
             return;
         }
 
-        doctorHospitalsList.innerHTML = hospitals.map((hospital) => {
+        const hospitals = doctorSettingsCache.hospitals || [];
+
+        if (!hospitals.length) {
+            list.innerHTML = `<p class="muted-text">No hospitals added yet.</p>`;
+            return;
+        }
+
+        list.innerHTML = hospitals.map((hospital) => {
             return `
                 <div class="compact-item">
-                    <strong>${hospital.name}</strong>
-                    <span>${hospital.address || "No address"}</span>
-                    <span>${hospital.city || "No city"}</span>
+                    <strong>${hospital.name || hospital.hospital_name || "Unnamed Hospital"}</strong>
+                    <span>City: ${hospital.city || "N/A"}</span>
+                    <span>Address: ${hospital.address || "N/A"}</span>
+                    <span>Status: ${hospital.is_active === false ? "Inactive" : "Active"}</span>
                 </div>
             `;
         }).join("");
-
-        scheduleHospital.innerHTML = `<option value="">Select hospital</option>` + hospitals.map((hospital) => {
-            return `<option value="${hospital.id}">${hospital.name} - ${hospital.city || ""}</option>`;
-        }).join("");
     }
 
-    function renderPaHospitalOptions(hospitals) {
-        if (!paInviteHospital) {
-            return;
-        }
+    function renderDoctorScheduleHospitalOptions() {
+        const scheduleSelect = document.getElementById("doctorScheduleHospital");
+        const paHospitalSelect = document.getElementById("doctorPaHospital");
+        const hospitals = doctorSettingsCache.hospitals || [];
 
-        if (!hospitals.length) {
-            paInviteHospital.innerHTML = `<option value="">Add hospital first</option>`;
-            return;
-        }
-
-        paInviteHospital.innerHTML = `<option value="">Select hospital</option>` + hospitals.map((hospital) => {
-            return `<option value="${hospital.id}">${hospital.name} - ${hospital.city || ""}</option>`;
-        }).join("");
-    }
-
-    function formatTime(value) {
-        if (!value) {
-            return "";
-        }
-
-        return String(value).slice(0, 5);
-    }
-
-    function renderDoctorSchedules(schedules) {
-        if (!schedules.length) {
-            doctorSchedulesList.innerHTML = `<p class="muted-text">No schedules added yet.</p>`;
-            return;
-        }
-
-        doctorSchedulesList.innerHTML = schedules.map((schedule) => {
+        const options = `<option value="">Select hospital</option>` + hospitals.map((hospital) => {
             return `
-                <div class="compact-item schedule-item" data-schedule-id="${schedule.schedule_id}">
-                    <div class="compact-item-top">
-                        <strong>${schedule.hospital_name}</strong>
+                <option value="${hospital.id || hospital.doctor_hospital_id}">
+                    ${hospital.name || hospital.hospital_name} - ${hospital.city || ""}
+                </option>
+            `;
+        }).join("");
 
-                        <button
-                            type="button"
-                            class="icon-button delete-schedule-button"
-                            title="Delete schedule"
-                            aria-label="Delete schedule"
-                        >
-                            🗑
+        if (scheduleSelect) {
+            scheduleSelect.innerHTML = options;
+        }
+
+        if (paHospitalSelect) {
+            paHospitalSelect.innerHTML = options;
+        }
+    }
+
+    function renderDoctorSchedules() {
+        const list = document.getElementById("doctorSchedulesList");
+
+        if (!list) {
+            return;
+        }
+
+        const schedules = doctorSettingsCache.schedules || [];
+
+        if (!schedules.length) {
+            list.innerHTML = `<p class="muted-text">No schedules added yet.</p>`;
+            return;
+        }
+
+        list.innerHTML = schedules.map((schedule) => {
+            const hospital =
+                doctorSettingsCache.hospitals.find((item) => {
+                    return String(item.id || item.doctor_hospital_id) === String(schedule.doctor_hospital_id);
+                }) || {};
+
+            return `
+                <div class="compact-item" data-schedule-id="${schedule.schedule_id}">
+                    <strong>${hospital.name || schedule.hospital_name || "Hospital"}</strong>
+                    <span>Day: ${dayName(schedule.day_of_week)}</span>
+                    <span>Time: ${String(schedule.start_time || "").slice(0, 5)} - ${String(schedule.end_time || "").slice(0, 5)}</span>
+                    <span>Duration: ${schedule.default_consultation_minutes || schedule.duration_minutes || 15} minutes</span>
+                    <span>Fee: ${money(schedule.consultation_fee || schedule.fee || 0)}</span>
+
+                    <div class="queue-card-actions">
+                        <button type="button" class="danger-button" data-action="delete-schedule">
+                            Delete
                         </button>
                     </div>
-
-                    <span>${dayNames[schedule.day_of_week]}: ${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}</span>
-                    <span>Duration: ${schedule.default_consultation_minutes} minutes</span>
-                    <span>Fee: ${schedule.consultation_fee}</span>
                 </div>
             `;
         }).join("");
     }
 
-    function renderDoctorFields(fields) {
-        if (!fields.length) {
-            doctorFieldsList.innerHTML = `<p class="muted-text">No dynamic fields added yet.</p>`;
+    function renderDoctorFields() {
+        const list = document.getElementById("doctorFieldsList");
+
+        if (!list) {
             return;
         }
 
-        doctorFieldsList.innerHTML = fields.map((field) => {
-            const contextLabel = field.field_context === "patient_intake"
-                ? "PA Intake"
-                : "Consultation";
+        const fields = doctorSettingsCache.formFields || [];
 
+        if (!fields.length) {
+            list.innerHTML = `<p class="muted-text">No dynamic fields added yet.</p>`;
+            return;
+        }
+
+        list.innerHTML = fields.map((field) => {
             return `
                 <div class="compact-item">
-                    <strong>${field.field_label}</strong>
-                    <span>Context: ${contextLabel}</span>
-                    <span>Type: ${field.field_type}</span>
+                    <strong>${field.field_label || field.label || "Field"}</strong>
+                    <span>Key: ${field.field_key || "N/A"}</span>
+                    <span>Type: ${field.field_type || "text"}</span>
+                    <span>Context: ${field.field_context || "consultation"}</span>
                     <span>Required: ${field.is_required ? "Yes" : "No"}</span>
                 </div>
             `;
         }).join("");
     }
 
-    async function submitHospital(event) {
+    async function addDoctorHospital(event) {
         event.preventDefault();
 
+        const name = document.getElementById("doctorHospitalName").value.trim();
+        const city = document.getElementById("doctorHospitalCity").value.trim();
+        const address = document.getElementById("doctorHospitalAddress").value.trim();
+
+        if (!name) {
+            doctorMsg("Hospital name is required.", "error");
+            return;
+        }
+
         try {
-            showMessage(doctorSettingsMessage, "Adding hospital...", "pending");
+            doctorMsg("Adding hospital...", "pending");
 
-            const payload = {
-                name: hospitalName.value.trim(),
-                address: hospitalAddress.value.trim(),
-                city: hospitalCity.value.trim()
-            };
-
-            const result = await apiRequest("/api/doctor/hospitals", {
+            await apiRequest("/api/doctor/hospitals", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    name,
+                    city,
+                    address
+                })
             });
 
-            showMessage(doctorSettingsMessage, result.message, "ok");
-            hospitalForm.reset();
+            document.getElementById("doctorHospitalForm").reset();
+
             await loadDoctorSettings();
+
+            doctorMsg("Hospital added successfully.", "ok");
         } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
+            doctorMsg(error.message, "error");
         }
     }
 
     function getSelectedScheduleDays() {
-        const checkedBoxes = document.querySelectorAll('input[name="scheduleDay"]:checked');
-        return Array.from(checkedBoxes).map((checkbox) => Number(checkbox.value));
+        return Array.from(document.querySelectorAll("#doctorScheduleDays input[type='checkbox']:checked"))
+            .map((checkbox) => Number(checkbox.value));
     }
 
-    function clearSelectedScheduleDays() {
-        const checkedBoxes = document.querySelectorAll('input[name="scheduleDay"]:checked');
-
-        checkedBoxes.forEach((checkbox) => {
-            checkbox.checked = false;
+    function scheduleAlreadyExists(hospitalId, dayNumber, startTime, endTime) {
+        return doctorSettingsCache.schedules.some((schedule) => {
+            return (
+                String(schedule.doctor_hospital_id) === String(hospitalId) &&
+                Number(schedule.day_of_week) === Number(dayNumber) &&
+                String(schedule.start_time || "").slice(0, 5) === String(startTime || "").slice(0, 5) &&
+                String(schedule.end_time || "").slice(0, 5) === String(endTime || "").slice(0, 5)
+            );
         });
     }
 
-    async function submitSchedule(event) {
+    async function addDoctorSchedule(event) {
         event.preventDefault();
 
+        const hospitalId = document.getElementById("doctorScheduleHospital").value;
+        const selectedDays = getSelectedScheduleDays();
+        const startTime = document.getElementById("doctorScheduleStart").value;
+        const endTime = document.getElementById("doctorScheduleEnd").value;
+        const duration = Number(document.getElementById("doctorScheduleDuration").value || 15);
+        const fee = Number(document.getElementById("doctorScheduleFee").value || 0);
+
+        if (!hospitalId) {
+            doctorMsg("Select hospital first.", "error");
+            return;
+        }
+
+        if (!selectedDays.length) {
+            doctorMsg("Select at least one day.", "error");
+            return;
+        }
+
+        if (!startTime || !endTime) {
+            doctorMsg("Start and end time are required.", "error");
+            return;
+        }
+
+        if (startTime >= endTime) {
+            doctorMsg("Start time must be before end time.", "error");
+            return;
+        }
+
         try {
-            showMessage(doctorSettingsMessage, "Adding schedule...", "pending");
+            doctorMsg("Adding schedule...", "pending");
 
-            const hospitalId = scheduleHospital.value;
-            const selectedDays = getSelectedScheduleDays();
+            for (const day of selectedDays) {
+                if (scheduleAlreadyExists(hospitalId, day, startTime, endTime)) {
+                    throw new Error(`Duplicate schedule found for ${dayName(day)} at same time.`);
+                }
 
-            if (!hospitalId) {
-                showMessage(doctorSettingsMessage, "Please select a hospital.", "error");
-                return;
+                await apiRequest(`/api/doctor/hospitals/${hospitalId}/schedules`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        day_of_week: day,
+                        start_time: startTime,
+                        end_time: endTime,
+                        default_consultation_minutes: duration,
+                        consultation_fee: fee
+                    })
+                });
             }
 
-            if (!selectedDays.length) {
-                showMessage(doctorSettingsMessage, "Please select at least one day.", "error");
-                return;
-            }
-
-            const payload = {
-                day_of_weeks: selectedDays,
-                start_time: scheduleStartTime.value,
-                end_time: scheduleEndTime.value,
-                default_consultation_minutes: Number(scheduleDuration.value),
-                consultation_fee: Number(scheduleFee.value)
-            };
-
-            const result = await apiRequest(`/api/doctor/hospitals/${hospitalId}/schedules`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            showMessage(doctorSettingsMessage, result.message, "ok");
-
-            scheduleForm.reset();
-            clearSelectedScheduleDays();
-            scheduleDuration.value = 15;
-            scheduleFee.value = 0;
+            document.getElementById("doctorScheduleForm").reset();
 
             await loadDoctorSettings();
+
+            doctorMsg("Schedule added successfully.", "ok");
         } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
+            doctorMsg(error.message, "error");
         }
     }
 
-    async function deleteSchedule(scheduleId) {
-        const confirmed = window.confirm("Delete this schedule entry?");
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-            showMessage(doctorSettingsMessage, "Deleting schedule...", "pending");
-
-            const result = await apiRequest(`/api/doctor/schedules/${scheduleId}`, {
-                method: "DELETE"
-            });
-
-            showMessage(doctorSettingsMessage, result.message, "ok");
-            await loadDoctorSettings();
-        } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
-        }
-    }
-
-    function handleScheduleListClick(event) {
-        const deleteButton = event.target.closest(".delete-schedule-button");
-
-        if (!deleteButton) {
-            return;
-        }
-
-        const scheduleCard = event.target.closest(".schedule-item");
-
-        if (!scheduleCard) {
-            return;
-        }
-
-        const scheduleId = scheduleCard.getAttribute("data-schedule-id");
-
-        if (!scheduleId) {
-            showMessage(doctorSettingsMessage, "Schedule ID not found.", "error");
-            return;
-        }
-
-        deleteSchedule(scheduleId);
-    }
-
-    async function submitFormField(event) {
-        event.preventDefault();
-
-        try {
-            showMessage(doctorSettingsMessage, "Adding form field...", "pending");
-
-            const payload = {
-                field_context: fieldContext.value,
-                field_label: fieldLabel.value.trim(),
-                field_type: fieldType.value,
-                is_required: fieldRequired.checked,
-                placeholder: fieldPlaceholder.value.trim(),
-                help_text: fieldHelpText.value.trim(),
-                display_order: 0,
-                options: null
-            };
-
-            const result = await apiRequest("/api/doctor/form-fields", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            showMessage(doctorSettingsMessage, result.message, "ok");
-            formFieldForm.reset();
-            await loadDoctorSettings();
-        } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
-        }
-    }
-
-    async function completeDoctorSettings() {
-        try {
-            showMessage(doctorSettingsMessage, "Completing settings...", "pending");
-
-            const result = await apiRequest("/api/doctor/settings/complete", {
-                method: "POST"
-            });
-
-            showMessage(doctorSettingsMessage, result.message, "ok");
-            await loadDoctorSettings();
-        } catch (error) {
-            showMessage(doctorSettingsMessage, error.message, "error");
-        }
-    }
-
-    function buildInviteLink(inviteToken) {
-        const currentPath = window.location.pathname;
-        const basePath = currentPath.replace("dashboard.html", "pa-register.html");
-        return `${window.location.origin}${basePath}?token=${inviteToken}`;
-    }
-
-    async function submitPaInvite(event) {
-        event.preventDefault();
-
-        try {
-            showMessage(paMessage, "Processing PA invite/link request...", "pending");
-            latestInviteBox.classList.add("hidden");
-            latestInviteBox.innerHTML = "";
-
-            const payload = {
-                doctor_hospital_id: Number(paInviteHospital.value),
-                cnic: paInviteCnic.value.trim(),
-                email: paInviteEmail.value.trim()
-            };
-
-            if (!payload.doctor_hospital_id) {
-                showMessage(paMessage, "Please select a hospital.", "error");
-                return;
-            }
-
-            const result = await apiRequest("/api/doctor/pa-invites", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            showMessage(paMessage, result.message, "ok");
-
-            if (result.mode === "invite_created") {
-                const inviteToken = result.data.invite.invite_token;
-                const inviteLink = buildInviteLink(inviteToken);
-
-                latestInviteBox.classList.remove("hidden");
-                latestInviteBox.innerHTML = `
-                    <strong>Invite Link Created</strong>
-                    <p>Share this link with the PA:</p>
-                    <div class="invite-link-row">
-                        <input type="text" value="${inviteLink}" readonly>
-                        <button type="button" class="secondary-button copy-link-button" data-copy-link="${inviteLink}">
-                            Copy
-                        </button>
-                    </div>
-                `;
-            }
-
-            paInviteForm.reset();
-            renderPaHospitalOptions(doctorHospitalsCache);
-
-            await loadDoctorPaData();
-        } catch (error) {
-            showMessage(paMessage, error.message, "error");
-        }
-    }
-
-    async function loadDoctorPaData() {
-        try {
-            showMessage(paMessage, "Loading PA data...", "pending");
-
-            if (!doctorHospitalsCache.length) {
-                await loadDoctorSettings();
-            } else {
-                renderPaHospitalOptions(doctorHospitalsCache);
-            }
-
-            const linksResult = await apiRequest("/api/doctor/pa-links");
-            const invitesResult = await apiRequest("/api/doctor/pa-invites");
-
-            renderLinkedPas(linksResult.data || []);
-            renderPaInvites(invitesResult.data || []);
-
-            showMessage(paMessage, "PA data loaded.", "ok");
-        } catch (error) {
-            showMessage(paMessage, error.message, "error");
-        }
-    }
-
-    function renderLinkedPas(links) {
-        if (!links.length) {
-            linkedPaList.innerHTML = `<p class="muted-text">No linked PAs yet.</p>`;
-            return;
-        }
-
-        linkedPaList.innerHTML = links.map((link) => {
-            return `
-                <div class="compact-item">
-                    <strong>${link.full_name || "Unnamed PA"}</strong>
-                    <span>CNIC: ${link.cnic}</span>
-                    <span>Email: ${link.email || "No email"}</span>
-                    <span>Phone: ${link.phone || "No phone"}</span>
-                    <span>Hospital: ${link.hospital_name} - ${link.hospital_city || ""}</span>
-                    <span>Status: ${link.account_status || "N/A"}</span>
-                </div>
-            `;
-        }).join("");
-    }
-
-    function renderPaInvites(invites) {
-        if (!invites.length) {
-            paInviteList.innerHTML = `<p class="muted-text">No PA invites yet.</p>`;
-            return;
-        }
-
-        paInviteList.innerHTML = invites.map((invite) => {
-            const inviteLink = buildInviteLink(invite.invite_token);
-            const showCopy = invite.status === "pending";
-
-            return `
-                <div class="compact-item pa-invite-item">
-                    <strong>${invite.invited_email}</strong>
-                    <span>CNIC: ${invite.invited_cnic}</span>
-                    <span>Hospital: ${invite.hospital_name} - ${invite.hospital_city || ""}</span>
-                    <span>Status: ${invite.status}</span>
-
-                    ${showCopy ? `
-                        <div class="invite-link-row compact-copy-row">
-                            <input type="text" value="${inviteLink}" readonly>
-                            <button type="button" class="secondary-button copy-link-button" data-copy-link="${inviteLink}">
-                                Copy
-                            </button>
-                        </div>
-                    ` : ""}
-                </div>
-            `;
-        }).join("");
-    }
-
-    async function copyText(value) {
-        try {
-            await navigator.clipboard.writeText(value);
-            showMessage(paMessage, "Invite link copied.", "ok");
-        } catch (error) {
-            const tempInput = document.createElement("input");
-            tempInput.value = value;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            showMessage(paMessage, "Invite link copied.", "ok");
-        }
-    }
-
-    function handleCopyClick(event) {
-        const button = event.target.closest(".copy-link-button");
+    async function handleScheduleAction(event) {
+        const button = event.target.closest("button[data-action]");
 
         if (!button) {
             return;
         }
 
-        const link = button.getAttribute("data-copy-link");
+        const card = event.target.closest("[data-schedule-id]");
 
-        if (!link) {
-            showMessage(paMessage, "Invite link not found.", "error");
+        if (!card) {
             return;
         }
 
-        copyText(link);
+        const scheduleId = card.getAttribute("data-schedule-id");
+
+        if (button.getAttribute("data-action") === "delete-schedule") {
+            const confirmed = window.confirm("Delete this schedule?");
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                doctorMsg("Deleting schedule...", "pending");
+
+                await apiRequest(`/api/doctor/schedules/${scheduleId}`, {
+                    method: "DELETE"
+                });
+
+                await loadDoctorSettings();
+
+                doctorMsg("Schedule deleted.", "ok");
+            } catch (error) {
+                doctorMsg(error.message, "error");
+            }
+        }
     }
 
-    async function loadPaWorkspace() {
+    async function addDoctorField(event) {
+        event.preventDefault();
+
+        const label = document.getElementById("doctorFieldLabel").value.trim();
+        const type = document.getElementById("doctorFieldType").value;
+        const context = document.getElementById("doctorFieldContext").value;
+        const required = document.getElementById("doctorFieldRequired").value === "true";
+
+        if (!label) {
+            doctorMsg("Field label is required.", "error");
+            return;
+        }
+
         try {
-            showMessage(paWorkspaceMessage, "Loading PA workspace...", "pending");
+            doctorMsg("Adding dynamic field...", "pending");
 
-            await loadPaAssignments();
-            await loadPaAppointments();
+            await apiRequest("/api/doctor/form-fields", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    field_label: label,
+                    field_key: slugify(label),
+                    field_type: type,
+                    field_context: context,
+                    is_required: required,
+                    display_order: (doctorSettingsCache.formFields || []).length + 1
+                })
+            });
 
-            showMessage(paWorkspaceMessage, "PA workspace loaded.", "ok");
+            document.getElementById("doctorFieldForm").reset();
+
+            await loadDoctorSettings();
+
+            doctorMsg("Dynamic field added successfully.", "ok");
         } catch (error) {
-            showMessage(paWorkspaceMessage, error.message, "error");
+            doctorMsg(error.message, "error");
         }
     }
 
-    async function loadPaAssignments() {
-        const result = await apiRequest("/api/pa/assignments");
-        paAssignmentsCache = result.data || [];
+    async function loadDoctorPaData() {
+        try {
+            const linksResult = await apiRequest("/api/doctor/pa-links");
+            doctorSettingsCache.paLinks = linksResult.data || linksResult.links || [];
+        } catch (error) {
+            doctorSettingsCache.paLinks = [];
+        }
 
-        renderPaAssignments(paAssignmentsCache);
-        renderPaAssignmentOptions(paAssignmentsCache);
+        try {
+            const invitesResult = await apiRequest("/api/doctor/pa-invites");
+            doctorSettingsCache.paInvites = invitesResult.data || invitesResult.invites || [];
+        } catch (error) {
+            doctorSettingsCache.paInvites = [];
+        }
+
+        renderDoctorPaLinks();
+        renderDoctorPaInvites();
     }
 
-    function renderPaAssignments(assignments) {
-        if (!assignments.length) {
-            paAssignmentsList.innerHTML = `<p class="muted-text">No doctor assignments found.</p>`;
+    function renderDoctorPaLinks() {
+        const list = document.getElementById("doctorPaLinksList");
+
+        if (!list) {
             return;
         }
 
-        paAssignmentsList.innerHTML = assignments.map((assignment) => {
+        const links = doctorSettingsCache.paLinks || [];
+
+        if (!links.length) {
+            list.innerHTML = `<p class="muted-text">No linked PAs found.</p>`;
+            return;
+        }
+
+        list.innerHTML = links.map((link) => {
             return `
-                <div class="assignment-card">
-                    <strong>${assignment.doctor_name}</strong>
-                    <span>${assignment.specialization || "Doctor"}</span>
-                    <span>${assignment.hospital_name} - ${assignment.hospital_city || ""}</span>
-                    <span>${assignment.hospital_address || "No address"}</span>
-                    <span>Active schedules: ${assignment.active_schedule_count || 0}</span>
+                <div class="compact-item">
+                    <strong>${link.full_name || link.pa_name || "Unnamed PA"}</strong>
+                    <span>CNIC: ${link.cnic || "N/A"}</span>
+                    <span>Email: ${link.email || "N/A"}</span>
+                    <span>Hospital: ${link.hospital_name || "N/A"}</span>
+                    <span>Status: ${link.is_active === false ? "Inactive" : "Active"}</span>
                 </div>
             `;
         }).join("");
     }
 
-    function renderPaAssignmentOptions(assignments) {
-        if (!appointmentAssignment) {
+    function renderDoctorPaInvites() {
+        const list = document.getElementById("doctorPaInvitesList");
+
+        if (!list) {
             return;
         }
 
-        if (!assignments.length) {
-            appointmentAssignment.innerHTML = `<option value="">No assignments available</option>`;
+        const invites = doctorSettingsCache.paInvites || [];
+
+        if (!invites.length) {
+            list.innerHTML = `<p class="muted-text">No PA invites found.</p>`;
             return;
         }
 
-        appointmentAssignment.innerHTML = `<option value="">Select doctor assignment</option>` + assignments.map((assignment) => {
+        list.innerHTML = invites.map((invite) => {
+            const token = invite.invite_token;
+            const link = token ? `${window.location.origin}${window.location.pathname.replace("dashboard.html", "")}pa-register.html?token=${token}` : "";
+
             return `
-                <option value="${assignment.doctor_pa_id}">
-                    ${assignment.doctor_name} - ${assignment.hospital_name} (${assignment.hospital_city || ""})
-                </option>
+                <div class="compact-item">
+                    <strong>${invite.email || invite.pa_email || "PA Invite"}</strong>
+                    <span>CNIC: ${invite.invited_cnic || invite.cnic || "N/A"}</span>
+                    <span>Status: ${invite.status || "pending"}</span>
+                    ${link ? `<span>Link: ${link}</span>` : ""}
+                </div>
             `;
         }).join("");
     }
 
-    async function searchPatientByCnic() {
-        const cnic = patientCnic.value.trim();
+    async function inviteOrLinkPa(event) {
+        event.preventDefault();
 
-        if (!cnic) {
-            showMessage(paWorkspaceMessage, "Enter patient CNIC first.", "error");
+        const cnic = normalizeCnic(document.getElementById("doctorPaCnic").value);
+        const email = document.getElementById("doctorPaEmail").value.trim().toLowerCase();
+        const hospitalId = document.getElementById("doctorPaHospital").value;
+
+        if (!/^[0-9]{13}$/.test(cnic)) {
+            doctorMsg("PA CNIC must be exactly 13 digits.", "error");
+            return;
+        }
+
+        if (!email) {
+            doctorMsg("PA email is required.", "error");
+            return;
+        }
+
+        if (!hospitalId) {
+            doctorMsg("Select hospital for PA.", "error");
             return;
         }
 
         try {
-            showMessage(paWorkspaceMessage, "Searching patient...", "pending");
+            doctorMsg("Creating PA invite/link...", "pending");
 
-            const result = await apiRequest(`/api/pa/patients/search?cnic=${encodeURIComponent(cnic)}`);
+            await apiRequest("/api/doctor/pa-invites", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    cnic,
+                    invited_cnic: cnic,
+                    email,
+                    pa_email: email,
+                    doctor_hospital_id: Number(hospitalId)
+                })
+            });
 
-            if (!result.data) {
-                showMessage(paWorkspaceMessage, "Patient not found. Enter new patient details.", "ok");
-                return;
-            }
+            document.getElementById("doctorPaInviteForm").reset();
 
-            patientName.value = result.data.name || "";
-            patientGender.value = result.data.gender || "";
-            patientDob.value = result.data.dob || "";
-            patientPhone.value = result.data.phone || "";
-            patientEmail.value = result.data.email || "";
+            await loadDoctorPaData();
 
-            showMessage(paWorkspaceMessage, "Existing patient loaded.", "ok");
+            doctorMsg("PA invite/link created.", "ok");
         } catch (error) {
-            showMessage(paWorkspaceMessage, error.message, "error");
+            doctorMsg(error.message, "error");
         }
     }
 
-    async function loadAvailableSlots() {
-        const assignmentId = appointmentAssignment.value;
+    function buildPaDashboard() {
+        paDashboard.innerHTML = `
+            <div class="dashboard-header">
+                <div>
+                    <h2>PA Workspace</h2>
+                    <p>Manage doctor assignments, book appointments, view daily appointments, update payments, and print prescriptions.</p>
+                </div>
 
-        if (!assignmentId) {
-            showMessage(paWorkspaceMessage, "Select doctor assignment first.", "error");
+                <button id="refreshPaDashboardButton" type="button" class="secondary-button">
+                    Refresh
+                </button>
+            </div>
+
+            <div id="paDashboardMessage" class="form-result"></div>
+
+            <div class="doctor-module-tabs">
+                <button class="pa-module-tab active" type="button" data-pa-tab="paAssignmentsTab">
+                    Assigned Doctors
+                </button>
+
+                <button class="pa-module-tab" type="button" data-pa-tab="paBookAppointmentTab">
+                    Book Appointment
+                </button>
+
+                <button class="pa-module-tab" type="button" data-pa-tab="paAppointmentsTab">
+                    Appointments
+                </button>
+            </div>
+
+            <section id="paAssignmentsTab" class="pa-module-panel">
+                <div class="settings-list-card">
+                    <h3>Assigned Doctors / Hospitals</h3>
+                    <div id="paAssignmentsList" class="compact-list scroll-list tall-scroll-list">
+                        <p class="muted-text">Loading assignments...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="paBookAppointmentTab" class="pa-module-panel hidden">
+                <div class="patient-request-grid">
+                    <div class="settings-card">
+                        <h3>Patient Information</h3>
+
+                        <form id="paAppointmentForm">
+                            <label>Doctor Assignment</label>
+                            <select id="paAppointmentAssignment" required>
+                                <option value="">Select assignment</option>
+                            </select>
+
+                            <label>Patient CNIC</label>
+                            <input id="paPatientCnic" type="text" placeholder="13 digit CNIC" maxlength="13" inputmode="numeric" required>
+
+                            <label>Patient Name</label>
+                            <input id="paPatientName" type="text" placeholder="Patient full name" required>
+
+                            <label>Gender</label>
+                            <select id="paPatientGender">
+                                <option value="">Select gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+
+                            <label>Date of Birth</label>
+                            <input id="paPatientDob" type="date">
+
+                            <label>Phone</label>
+                            <input id="paPatientPhone" type="text" placeholder="03001234567" maxlength="11" inputmode="numeric">
+
+                            <label>Email</label>
+                            <input id="paPatientEmail" type="email" placeholder="patient@example.com">
+
+                            <label>Fee Charged</label>
+                            <input id="paAppointmentFee" type="number" min="0" value="0">
+
+                            <label>Fee Status</label>
+                            <select id="paAppointmentFeeStatus">
+                                <option value="paid">Paid</option>
+                                <option value="pending">Pending</option>
+                                <option value="waived">Waived</option>
+                            </select>
+
+                            <label>Duration Minutes</label>
+                            <input id="paAppointmentDuration" type="number" min="1" value="15">
+
+                            <label>Notes</label>
+                            <textarea id="paAppointmentNotes" placeholder="Optional notes"></textarea>
+                        </form>
+                    </div>
+
+                    <div class="settings-list-card">
+                        <h3>Available Slots</h3>
+
+                        <button id="loadPaSlotsButton" type="button">
+                            Load Slots
+                        </button>
+
+                        <div id="paSlotsList" class="compact-list scroll-list tall-scroll-list">
+                            <p class="muted-text">Select assignment and load slots.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Selected Slot</h3>
+
+                        <div id="paSelectedSlotBox">
+                            <p class="muted-text">No slot selected.</p>
+                        </div>
+
+                        <button id="bookPaAppointmentButton" type="button">
+                            Book Appointment
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="paAppointmentsTab" class="pa-module-panel hidden">
+                <div class="queue-filter-grid">
+                    <div>
+                        <label>Date</label>
+                        <input id="paAppointmentsDate" type="date">
+                    </div>
+                </div>
+
+                <div class="settings-list-card">
+                    <h3>Appointments</h3>
+                    <div id="paAppointmentsList" class="compact-list scroll-list tall-scroll-list">
+                        <p class="muted-text">No appointments loaded.</p>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        setupRoleTabs(paDashboard, ".pa-module-tab", ".pa-module-panel", "data-pa-tab");
+
+        document.getElementById("refreshPaDashboardButton").addEventListener("click", loadPaDashboard);
+        document.getElementById("loadPaSlotsButton").addEventListener("click", loadPaSlots);
+        document.getElementById("bookPaAppointmentButton").addEventListener("click", bookPaAppointment);
+
+        const assignmentSelect = document.getElementById("paAppointmentAssignment");
+
+        if (assignmentSelect) {
+            assignmentSelect.addEventListener("change", handlePaAssignmentChange);
+        }
+
+        const paSlotsList = document.getElementById("paSlotsList");
+
+        if (paSlotsList) {
+            paSlotsList.addEventListener("click", handlePaSlotSelection);
+        }
+
+        const dateInput = document.getElementById("paAppointmentsDate");
+
+        if (dateInput) {
+            dateInput.value = todayIsoDate();
+            dateInput.addEventListener("change", loadPaAppointments);
+        }
+
+        loadPaDashboard();
+    }
+
+    function paMsg(message, type) {
+        const box = document.getElementById("paDashboardMessage");
+
+        if (!box) {
             return;
         }
 
-        try {
-            selectedAppointmentSlot = null;
-            renderSelectedSlot();
+        box.textContent = message || "";
+        box.classList.remove("ok", "error", "pending");
 
-            showMessage(paWorkspaceMessage, "Loading available slots...", "pending");
+        if (type) {
+            box.classList.add(type);
+        }
+    }
+
+    async function loadPaDashboard() {
+        try {
+            paMsg("Loading PA workspace...", "pending");
+
+            await loadPaAssignments();
+            await loadPaAppointments();
+
+            paMsg("PA workspace loaded.", "ok");
+        } catch (error) {
+            paMsg(error.message, "error");
+        }
+    }
+
+    async function loadPaAssignments() {
+        const result = await apiRequest("/api/pa/assignments");
+        paWorkspaceCache.assignments = result.data || result.assignments || [];
+
+        renderPaAssignments();
+        renderPaAssignmentOptions();
+    }
+
+    function renderPaAssignments() {
+        const list = document.getElementById("paAssignmentsList");
+
+        if (!list) {
+            return;
+        }
+
+        const assignments = paWorkspaceCache.assignments || [];
+
+        if (!assignments.length) {
+            list.innerHTML = `<p class="muted-text">No assigned doctors found.</p>`;
+            return;
+        }
+
+        list.innerHTML = assignments.map((assignment) => {
+            return `
+                <div class="compact-item">
+                    <strong>${assignment.doctor_name || "Doctor"}</strong>
+                    <span>Specialization: ${assignment.specialization || "N/A"}</span>
+                    <span>Hospital: ${assignment.hospital_name || "N/A"} - ${assignment.hospital_city || ""}</span>
+                    <span>Fee: ${money(assignment.consultation_fee || assignment.default_fee || 0)}</span>
+                    <span>Duration: ${assignment.default_consultation_minutes || 15} minutes</span>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function renderPaAssignmentOptions() {
+        const select = document.getElementById("paAppointmentAssignment");
+
+        if (!select) {
+            return;
+        }
+
+        const assignments = paWorkspaceCache.assignments || [];
+
+        select.innerHTML =
+            `<option value="">Select assignment</option>` +
+            assignments.map((assignment) => {
+                return `
+                    <option value="${assignment.assignment_id || assignment.doctor_pa_id || assignment.id}">
+                        ${assignment.doctor_name || "Doctor"} - ${assignment.hospital_name || "Hospital"}
+                    </option>
+                `;
+            }).join("");
+    }
+
+    function getSelectedAssignment() {
+        const select = document.getElementById("paAppointmentAssignment");
+
+        if (!select) {
+            return null;
+        }
+
+        const selectedId = select.value;
+
+        return (paWorkspaceCache.assignments || []).find((assignment) => {
+            return String(assignment.assignment_id || assignment.doctor_pa_id || assignment.id) === String(selectedId);
+        }) || null;
+    }
+
+    function handlePaAssignmentChange() {
+        const assignment = getSelectedAssignment();
+
+        if (!assignment) {
+            return;
+        }
+
+        const feeInput = document.getElementById("paAppointmentFee");
+        const durationInput = document.getElementById("paAppointmentDuration");
+
+        if (feeInput) {
+            feeInput.value = assignment.consultation_fee || assignment.default_fee || 0;
+        }
+
+        if (durationInput) {
+            durationInput.value = assignment.default_consultation_minutes || 15;
+        }
+
+        paWorkspaceCache.selectedSlot = null;
+        renderPaSelectedSlot();
+    }
+
+    async function loadPaSlots() {
+        const assignment = getSelectedAssignment();
+
+        if (!assignment) {
+            paMsg("Select assignment first.", "error");
+            return;
+        }
+
+        const assignmentId = assignment.assignment_id || assignment.doctor_pa_id || assignment.id;
+
+        try {
+            paMsg("Loading available slots...", "pending");
 
             const result = await apiRequest(`/api/pa/available-slots?assignment_id=${assignmentId}&days=14`);
+            const slots = result.data || result.slots || [];
 
-            renderAvailableSlots(result.data || []);
+            renderPaSlots(slots);
 
-            showMessage(paWorkspaceMessage, `${(result.data || []).length} available slot(s) loaded.`, "ok");
+            paMsg(`${slots.length} slot(s) loaded.`, "ok");
         } catch (error) {
-            showMessage(paWorkspaceMessage, error.message, "error");
+            paMsg(error.message, "error");
         }
     }
 
-    function renderAvailableSlots(slots) {
-        if (!slots.length) {
-            availableSlotsList.innerHTML = `<p class="muted-text">No available slots found.</p>`;
-            availableSlotsList.dataset.slots = "[]";
+    function renderPaSlots(slots) {
+        const list = document.getElementById("paSlotsList");
+
+        if (!list) {
             return;
         }
 
-        availableSlotsList.innerHTML = slots.map((slot, index) => {
+        paWorkspaceCache.selectedSlot = null;
+        renderPaSelectedSlot();
+
+        if (!slots.length) {
+            list.innerHTML = `<p class="muted-text">No available slots found.</p>`;
+            list.dataset.slots = "[]";
+            return;
+        }
+
+        list.dataset.slots = JSON.stringify(slots);
+
+        list.innerHTML = slots.map((slot, index) => {
             return `
-                <button
-                    type="button"
-                    class="slot-button"
-                    data-slot-index="${index}"
-                >
-                    <strong>${slot.date}</strong>
-                    <span>${slot.start_time} - ${slot.end_time}</span>
-                    <span>${slot.doctor_name}</span>
-                    <span>${slot.hospital_name}</span>
-                    <span>Fee: ${slot.consultation_fee}</span>
+                <button type="button" class="slot-button" data-slot-index="${index}">
+                    <strong>${slot.date || String(slot.appointment_datetime || "").slice(0, 10)}</strong>
+                    <span>${slot.start_time || formatDateTime(slot.appointment_datetime)} - ${slot.end_time || ""}</span>
+                    <span>Fee: ${money(slot.expected_fee || slot.consultation_fee || 0)}</span>
                 </button>
             `;
         }).join("");
-
-        availableSlotsList.dataset.slots = JSON.stringify(slots);
     }
 
-    function selectAvailableSlot(index) {
-        const slots = JSON.parse(availableSlotsList.dataset.slots || "[]");
-        selectedAppointmentSlot = slots[index];
-
-        renderSelectedSlot();
-
-        document.querySelectorAll(".slot-button").forEach((button) => {
-            button.classList.remove("selected");
-        });
-
-        const selectedButton = availableSlotsList.querySelector(`[data-slot-index="${index}"]`);
-
-        if (selectedButton) {
-            selectedButton.classList.add("selected");
-        }
-    }
-
-    function renderSelectedSlot() {
-        if (!selectedAppointmentSlot) {
-            selectedSlotBox.innerHTML = `<p class="muted-text">No slot selected.</p>`;
-            return;
-        }
-
-        selectedSlotBox.innerHTML = `
-            <div class="compact-item">
-                <strong>${selectedAppointmentSlot.date}</strong>
-                <span>${selectedAppointmentSlot.start_time} - ${selectedAppointmentSlot.end_time}</span>
-                <span>Doctor: ${selectedAppointmentSlot.doctor_name}</span>
-                <span>Hospital: ${selectedAppointmentSlot.hospital_name}</span>
-                <span>Fee: ${selectedAppointmentSlot.consultation_fee}</span>
-            </div>
-        `;
-    }
-
-    function handleAvailableSlotClick(event) {
+    function handlePaSlotSelection(event) {
         const button = event.target.closest(".slot-button");
 
         if (!button) {
             return;
         }
 
+        const list = document.getElementById("paSlotsList");
+        const slots = JSON.parse(list.dataset.slots || "[]");
         const index = Number(button.getAttribute("data-slot-index"));
-        selectAvailableSlot(index);
+
+        paWorkspaceCache.selectedSlot = slots[index];
+
+        list.querySelectorAll(".slot-button").forEach((item) => {
+            item.classList.remove("selected");
+        });
+
+        button.classList.add("selected");
+
+        renderPaSelectedSlot();
     }
 
-    async function bookAppointment() {
-        const freshToken = localStorage.getItem("hm_token");
+    function renderPaSelectedSlot() {
+        const box = document.getElementById("paSelectedSlotBox");
 
-        console.log("BOOK_APPOINTMENT_TOKEN_EXISTS:", Boolean(freshToken));
-
-        if (!freshToken) {
-            showMessage(paWorkspaceMessage, "Login session expired. Please login again as PA.", "error");
-            localStorage.removeItem("hm_user");
-            window.location.href = "./index.html";
+        if (!box) {
             return;
         }
 
-        if (!selectedAppointmentSlot) {
-            showMessage(paWorkspaceMessage, "Select an appointment slot first.", "error");
+        const slot = paWorkspaceCache.selectedSlot;
+
+        if (!slot) {
+            box.innerHTML = `<p class="muted-text">No slot selected.</p>`;
             return;
         }
 
-        if (!patientCnic.value.trim() || !patientName.value.trim()) {
-            showMessage(paWorkspaceMessage, "Patient CNIC and name are required.", "error");
+        box.innerHTML = `
+            <div class="compact-item">
+                <strong>${slot.date || String(slot.appointment_datetime || "").slice(0, 10)}</strong>
+                <span>Time: ${slot.start_time || formatDateTime(slot.appointment_datetime)} - ${slot.end_time || ""}</span>
+                <span>Fee: ${money(slot.expected_fee || slot.consultation_fee || 0)}</span>
+            </div>
+        `;
+    }
+
+    async function bookPaAppointment() {
+        const assignment = getSelectedAssignment();
+        const slot = paWorkspaceCache.selectedSlot;
+
+        if (!assignment) {
+            paMsg("Select assignment first.", "error");
             return;
         }
 
-        const payload = {
-            assignment_id: Number(appointmentAssignment.value),
-            appointment_datetime: selectedAppointmentSlot.appointment_datetime,
-            fee_status: appointmentFeeStatus.value,
-            notes: appointmentNotes.value.trim(),
-            patient: {
-                cnic: patientCnic.value.trim(),
-                name: patientName.value.trim(),
-                gender: patientGender.value,
-                dob: patientDob.value,
-                phone: patientPhone.value.trim(),
-                email: patientEmail.value.trim()
-            }
-        };
+        if (!slot) {
+            paMsg("Select available slot first.", "error");
+            return;
+        }
+
+        const cnic = normalizeCnic(document.getElementById("paPatientCnic").value);
+        const name = document.getElementById("paPatientName").value.trim();
+        const gender = document.getElementById("paPatientGender").value;
+        const dob = document.getElementById("paPatientDob").value;
+        const phone = normalizePhone(document.getElementById("paPatientPhone").value);
+        const email = document.getElementById("paPatientEmail").value.trim();
+        const fee = Number(document.getElementById("paAppointmentFee").value || 0);
+        const feeStatus = document.getElementById("paAppointmentFeeStatus").value;
+        const duration = Number(document.getElementById("paAppointmentDuration").value || 15);
+        const notes = document.getElementById("paAppointmentNotes").value.trim();
+
+        if (!/^[0-9]{13}$/.test(cnic)) {
+            paMsg("Patient CNIC must be exactly 13 digits.", "error");
+            return;
+        }
+
+        if (!name) {
+            paMsg("Patient name is required.", "error");
+            return;
+        }
 
         try {
-            showMessage(paWorkspaceMessage, "Booking appointment...", "pending");
+            paMsg("Booking appointment...", "pending");
 
-            const response = await fetch(`${API_BASE_URL}/api/pa/appointments`, {
+            const assignmentId = assignment.assignment_id || assignment.doctor_pa_id || assignment.id;
+
+            const payload = {
+                assignment_id: assignmentId,
+                doctor_pa_id: assignmentId,
+                patient_cnic: cnic,
+                cnic: cnic,
+                patient_name: name,
+                name: name,
+                gender: gender,
+                dob: dob || null,
+                phone: phone,
+                email: email,
+                appointment_datetime: slot.appointment_datetime,
+                scheduled_start: slot.appointment_datetime,
+                duration_minutes: duration,
+                fee_charged: fee,
+                fee_status: feeStatus,
+                notes: notes,
+                source: "walk_in"
+            };
+
+            await apiRequest("/api/pa/appointments", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${freshToken}`
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify(payload)
             });
 
-            let result = {};
-
-            try {
-                result = await response.json();
-            } catch (error) {
-                throw new Error("Server returned an invalid response.");
-            }
-
-            if (!response.ok) {
-                console.log("FULL_BOOK_APPOINTMENT_RESPONSE:", result);
-                throw new Error(result.error || result.message || "Appointment booking failed.");
-            }
-
-            showMessage(paWorkspaceMessage, result.message, "ok");
-
-            paAppointmentForm.reset();
-            selectedAppointmentSlot = null;
-            renderSelectedSlot();
-
-            availableSlotsList.innerHTML = `
-                <p class="muted-text">
-                    Appointment booked. Load slots again for latest availability.
-                </p>
-            `;
+            document.getElementById("paAppointmentForm").reset();
+            paWorkspaceCache.selectedSlot = null;
+            renderPaSelectedSlot();
 
             await loadPaAppointments();
+
+            paMsg("Appointment booked successfully.", "ok");
         } catch (error) {
-            showMessage(paWorkspaceMessage, error.message, "error");
-            console.log("BOOK_APPOINTMENT_ERROR:", error.message);
+            paMsg(error.message, "error");
         }
     }
 
     async function loadPaAppointments() {
-        if (!paAppointmentsDate.value) {
-            paAppointmentsDate.value = todayIsoDate();
-        }
+        const list = document.getElementById("paAppointmentsList");
+        const dateInput = document.getElementById("paAppointmentsDate");
 
-        try {
-            const result = await apiRequest(`/api/pa/appointments?date=${paAppointmentsDate.value}`);
-            renderPaAppointments(result.data || []);
-        } catch (error) {
-            showMessage(paWorkspaceMessage, error.message, "error");
-        }
-    }
-
-    function renderPaAppointments(appointments) {
-        if (!appointments.length) {
-            paAppointmentsList.innerHTML = `<p class="muted-text">No appointments found for this date.</p>`;
+        if (!list || !dateInput) {
             return;
         }
 
-        paAppointmentsList.innerHTML = appointments.map((appointment) => {
-            return `
-                <div class="compact-item">
-                    <strong>${appointment.patient_name}</strong>
-                    <span>CNIC: ${appointment.patient_cnic}</span>
-                    <span>Time: ${formatDateTime(appointment.appointment_datetime)}</span>
-                    <span>Doctor: ${appointment.doctor_name} (${appointment.specialization || "Doctor"})</span>
-                    <span>Hospital: ${appointment.hospital_name} - ${appointment.hospital_city || ""}</span>
-                    <span>Fee: ${appointment.fee_charged} (${appointment.fee_status})</span>
-                    <span>Status: ${appointment.status}</span>
-                </div>
-            `;
-        }).join("");
+        const date = dateInput.value || todayIsoDate();
+
+        try {
+            const result = await apiRequest(`/api/pa/appointments?date=${date}`);
+            const appointments = result.data || result.appointments || [];
+
+            if (!appointments.length) {
+                list.innerHTML = `<p class="muted-text">No appointments found for this date.</p>`;
+                return;
+            }
+
+            list.innerHTML = appointments.map((appointment) => {
+                return `
+                    <div class="compact-item">
+                        <strong>${appointment.patient_name || appointment.name || "Patient"}</strong>
+                        <span>CNIC: ${appointment.patient_cnic || appointment.cnic || "N/A"}</span>
+                        <span>Doctor: ${appointment.doctor_name || "N/A"}</span>
+                        <span>Hospital: ${appointment.hospital_name || "N/A"} - ${appointment.hospital_city || ""}</span>
+                        <span>Time: ${formatDateTime(appointment.appointment_datetime || appointment.scheduled_start)}</span>
+                        <span>Fee: ${money(appointment.fee_charged)} (${appointment.fee_status})</span>
+                        <span>Status: ${appointment.status}</span>
+                        <span>Source: ${appointment.source || "walk_in"}</span>
+                    </div>
+                `;
+            }).join("");
+        } catch (error) {
+            list.innerHTML = `<p class="muted-text">${error.message}</p>`;
+        }
     }
 
-    logoutButton.addEventListener("click", logout);
-
-    doctorModuleTabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-            switchDoctorModule(tab.getAttribute("data-doctor-tab"));
+    if (logoutButton) {
+        logoutButton.addEventListener("click", () => {
+            redirectToLogin();
         });
-    });
-
-    paModuleTabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-            switchPaModule(tab.getAttribute("data-pa-tab"));
-        });
-    });
-
-    if (refreshPendingDoctorsButton) {
-        refreshPendingDoctorsButton.addEventListener("click", loadAdminDashboard);
-    }
-
-    if (pendingDoctorsList) {
-        pendingDoctorsList.addEventListener("click", handleDoctorListClick);
-    }
-
-    if (refreshDoctorSettingsButton) {
-        refreshDoctorSettingsButton.addEventListener("click", loadDoctorSettings);
-    }
-
-    if (hospitalForm) {
-        hospitalForm.addEventListener("submit", submitHospital);
-    }
-
-    if (scheduleForm) {
-        scheduleForm.addEventListener("submit", submitSchedule);
-    }
-
-    if (doctorSchedulesList) {
-        doctorSchedulesList.addEventListener("click", handleScheduleListClick);
-    }
-
-    if (formFieldForm) {
-        formFieldForm.addEventListener("submit", submitFormField);
-    }
-
-    if (completeSettingsButton) {
-        completeSettingsButton.addEventListener("click", completeDoctorSettings);
-    }
-
-    if (paInviteForm) {
-        paInviteForm.addEventListener("submit", submitPaInvite);
-    }
-
-    if (refreshPaDataButton) {
-        refreshPaDataButton.addEventListener("click", loadDoctorPaData);
-    }
-
-    if (latestInviteBox) {
-        latestInviteBox.addEventListener("click", handleCopyClick);
-    }
-
-    if (paInviteList) {
-        paInviteList.addEventListener("click", handleCopyClick);
-    }
-
-    if (refreshPaWorkspaceButton) {
-        refreshPaWorkspaceButton.addEventListener("click", loadPaWorkspace);
-    }
-
-    if (paAppointmentForm) {
-        paAppointmentForm.addEventListener("submit", (event) => {
-            event.preventDefault();
-        });
-    }
-
-    if (searchPatientButton) {
-        searchPatientButton.addEventListener("click", searchPatientByCnic);
-    }
-
-    if (loadSlotsButton) {
-        loadSlotsButton.addEventListener("click", loadAvailableSlots);
-    }
-
-    if (availableSlotsList) {
-        availableSlotsList.addEventListener("click", handleAvailableSlotClick);
-    }
-
-    if (bookAppointmentButton) {
-        bookAppointmentButton.addEventListener("click", bookAppointment);
-    }
-
-    if (paAppointmentsDate) {
-        paAppointmentsDate.addEventListener("change", loadPaAppointments);
     }
 
     verifySession();
-    renderDashboardByRole();
-
-    setInterval(() => {
-        if (user.role === "admin") {
-            loadAdminSummary();
-        }
-
-        if (user.role === "pa") {
-            loadPaAppointments();
-        }
-    }, 30000);
 });

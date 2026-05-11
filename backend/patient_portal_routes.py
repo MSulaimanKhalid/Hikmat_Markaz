@@ -5,8 +5,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, request, jsonify, g
-from werkzeug.security import check_password_hash
-
+from werkzeug.security import check_password_hash, generate_password_hash
 from db import fetch_one, fetch_all, execute_query, transaction
 from auth import login_required, hash_password
 
@@ -391,8 +390,11 @@ def patient_signup():
             "message": "A patient account already exists for this CNIC."
         }), 409
 
-    password_hash = hash_password(password)
-
+    password_hash = generate_password_hash(
+    password,
+    method="pbkdf2:sha256",
+    salt_length=16
+    )
     try:
         with transaction() as cursor:
             cursor.execute("""
@@ -510,75 +512,116 @@ def patient_signup():
 
 @patient_portal_bp.post("/login")
 def patient_login():
-    data = request.get_json(silent=True) or {}
+    try:
+        data = request.get_json(silent=True) or {}
 
-    cnic = clean_text(data.get("cnic"))
-    password = data.get("password") or ""
+        cnic = clean_text(data.get("cnic"))
+        cnic = "".join(ch for ch in cnic if ch.isdigit())
 
-    if not cnic:
+        password = data.get("password") or ""
+
+        if not cnic:
+            return jsonify({
+                "status": "error",
+                "message": "CNIC is required."
+            }), 400
+
+        if len(cnic) != 13:
+            return jsonify({
+                "status": "error",
+                "message": "CNIC must be exactly 13 digits."
+            }), 400
+
+        if not password:
+            return jsonify({
+                "status": "error",
+                "message": "Password is required."
+            }), 400
+
+        patient = fetch_one("""
+            select
+                p.patient_id,
+                p.user_id,
+                p.cnic,
+                p.name,
+                p.is_active,
+                au.email,
+                au.password_hash,
+                au.role,
+                au.status
+            from public.patient p
+            join public.app_user au
+              on au.user_id = p.user_id
+            where p.cnic = %s
+              and au.role = 'patient'
+            limit 1
+        """, (cnic,))
+
+        if not patient:
+            return jsonify({
+                "status": "error",
+                "message": "Invalid CNIC or password."
+            }), 401
+
+        stored_hash = patient["password_hash"] or ""
+
+        if not stored_hash or "$" not in stored_hash:
+            return jsonify({
+                "status": "error",
+                "message": "This patient account has an invalid or old password record. Please reset/repair this patient password."
+            }), 401
+
+        try:
+            password_ok = check_password_hash(stored_hash, password)
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "message": "This patient account has an invalid password hash. Please reset/repair this patient password."
+            }), 401
+
+        if not password_ok:
+            return jsonify({
+                "status": "error",
+                "message": "Invalid CNIC or password."
+            }), 401
+
+        if not patient["is_active"] or patient["status"] != "active":
+            return jsonify({
+                "status": "error",
+                "message": "Patient account is not active."
+            }), 403
+
+        user_payload = {
+            "user_id": patient["user_id"],
+            "email": patient["email"],
+            "role": "patient",
+            "status": patient["status"]
+        }
+
+        token = create_patient_token(user_payload)
+
         return jsonify({
-            "status": "error",
-            "message": "CNIC is required."
-        }), 400
-
-    patient = fetch_one("""
-        select
-            p.patient_id,
-            p.user_id,
-            p.cnic,
-            p.name,
-            p.is_active,
-            au.email,
-            au.password_hash,
-            au.role,
-            au.status
-        from public.patient p
-        join public.app_user au
-          on au.user_id = p.user_id
-        where p.cnic = %s
-          and au.role = 'patient'
-        limit 1
-    """, (cnic,))
-
-    if not patient:
-        return jsonify({
-            "status": "error",
-            "message": "Invalid CNIC or password."
-        }), 401
-
-    if not check_password_hash(patient["password_hash"], password):
-        return jsonify({
-            "status": "error",
-            "message": "Invalid CNIC or password."
-        }), 401
-
-    if not patient["is_active"] or patient["status"] != "active":
-        return jsonify({
-            "status": "error",
-            "message": "Patient account is not active."
-        }), 403
-
-    user_payload = {
-        "user_id": patient["user_id"],
-        "email": patient["email"],
-        "role": "patient",
-        "status": patient["status"]
-    }
-
-    token = create_patient_token(user_payload)
-
-    return jsonify({
-        "status": "ok",
-        "message": "Patient login successful.",
-        "token": token,
-        "user": user_payload,
-        "patient": make_json_safe({
-            "patient_id": patient["patient_id"],
-            "cnic": patient["cnic"],
-            "name": patient["name"]
+            "status": "ok",
+            "message": "Patient login successful.",
+            "token": token,
+            "user": user_payload,
+            "patient": make_json_safe({
+                "patient_id": patient["patient_id"],
+                "cnic": patient["cnic"],
+                "name": patient["name"]
+            })
         })
-    })
 
+    except Exception as error:
+        print("PATIENT LOGIN ERROR:", str(error))
+
+        return jsonify({
+            "status": "error",
+            "message": "Patient login failed due to backend error.",
+            "error": str(error)
+        }), 500
+
+    
 
 @patient_portal_bp.get("/me")
 @login_required(allowed_roles=["patient"])
