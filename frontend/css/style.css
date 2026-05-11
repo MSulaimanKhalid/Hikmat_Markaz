@@ -1251,3 +1251,162 @@ button:hover {
     color: #9a9f9d;
     font-size: 12px;
 }
+.appointment-filter-grid,
+.finance-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.doctor-appointments-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.doctor-appointment-card {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.appointment-detail-card {
+    min-height: 560px;
+}
+
+.appointment-detail-section {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.appointment-detail-section h4 {
+    margin: 0 0 10px;
+    color: #1f2b2a;
+}
+
+.appointment-detail-section p {
+    margin: 6px 0;
+    color: #40504e;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.payment-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.mini-log-item {
+    border-top: 1px solid #ece7dd;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.mini-log-item strong,
+.mini-log-item span {
+    display: block;
+}
+
+.mini-log-item strong {
+    color: #1f2b2a;
+    margin-bottom: 5px;
+}
+
+.mini-log-item span {
+    color: #687473;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.finance-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.finance-card {
+    background: white;
+    border: 1px solid #ece7dd;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 10px 24px rgba(51, 61, 58, 0.06);
+}
+
+.finance-card span {
+    display: block;
+    color: #687473;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.finance-card strong {
+    display: block;
+    color: #1f2b2a;
+    font-size: 22px;
+}
+
+.finance-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.finance-wide-card {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+    .appointment-filter-grid,
+    .finance-filter-grid,
+    .finance-summary-grid,
+    .doctor-appointments-layout,
+    .finance-breakdown-grid,
+    .payment-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .finance-wide-card {
+        grid-column: auto;
+    }
+}
+.login-role-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 16px 0 18px;
+}
+
+.login-role-toggle button {
+    margin: 0;
+    background: #f4f0e8;
+    color: #40504e;
+    border: 1px solid #e4ded2;
+}
+
+.login-role-toggle button.active {
+    background: #2f6d64;
+    color: white;
+    border-color: #2f6d64;
+}
+
+.payment-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 12px 0;
+}
+
+@media (max-width: 900px) {
+    .payment-form-grid {
+        grid-template-columns: 1fr;
+    }
+}

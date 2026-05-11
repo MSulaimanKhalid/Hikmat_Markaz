@@ -26,19 +26,41 @@
             <div class="auth-card-header">
                 <h2>Login</h2>
                 <p>
-                    Admins, doctors, and PAs can sign in here.
+                    Staff can sign in by email. Patients can sign in by CNIC.
                 </p>
             </div>
 
+            <div class="login-role-toggle">
+                <button id="staffLoginModeButton" type="button" class="active">
+                    Staff Login
+                </button>
+
+                <button id="patientLoginModeButton" type="button">
+                    Patient Login
+                </button>
+            </div>
+
             <form id="loginForm">
-                <label>Email</label>
-                <input
-                    id="loginEmail"
-                    type="email"
-                    placeholder="Enter your email"
-                    autocomplete="email"
-                    required
-                >
+                <div id="staffLoginFields">
+                    <label>Email</label>
+                    <input
+                        id="loginEmail"
+                        type="email"
+                        placeholder="Enter staff email"
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div id="patientLoginFields" class="hidden">
+                    <label>CNIC</label>
+                    <input
+                        id="loginCnic"
+                        type="text"
+                        placeholder="13 digit CNIC"
+                        maxlength="13"
+                        inputmode="numeric"
+                    >
+                </div>
 
                 <label>Password</label>
                 <input
@@ -106,6 +128,7 @@
     </main>
 
     <script src="./js/config.js"></script>
+    <script src="./js/data-integrity.js"></script>
     <script src="./js/main.js"></script>
 </body>
 </html>
