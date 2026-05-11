@@ -1410,3 +1410,446 @@ button:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   Hikmat Markaz - Professional Dark Theme Override
+   Paste at the END of frontend/css/style.css
+   ============================================================ */
+
+/* ============================================================
+   Hikmat Markaz - Unified Dark Theme + Safe Interaction Fix
+   Keep this as the ONLY dark theme override.
+   ============================================================ */
+
+:root {
+    --dark-bg: #0b1110;
+    --dark-panel: #111b1a;
+    --dark-card: #192624;
+    --dark-card-2: #20312e;
+    --dark-input: #0f1817;
+
+    --dark-border: rgba(255, 255, 255, 0.11);
+    --dark-border-strong: rgba(255, 255, 255, 0.18);
+
+    --dark-text: #eef7f5;
+    --dark-muted: #a8bab6;
+    --dark-soft: #7f918d;
+
+    --dark-accent: #5fd0b5;
+    --dark-accent-2: #38a98f;
+    --dark-accent-soft: rgba(95, 208, 181, 0.16);
+
+    --dark-danger: #ff7777;
+    --dark-danger-soft: rgba(255, 119, 119, 0.16);
+    --dark-warning: #f2ca72;
+    --dark-warning-soft: rgba(242, 202, 114, 0.16);
+    --dark-success: #74dfa9;
+    --dark-success-soft: rgba(116, 223, 169, 0.16);
+
+    --dark-shadow: 0 18px 45px rgba(0, 0, 0, 0.36);
+}
+
+/* Global */
+html,
+body {
+    min-height: 100%;
+    background:
+        radial-gradient(circle at top left, rgba(95, 208, 181, 0.12), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(88, 108, 255, 0.08), transparent 34%),
+        var(--dark-bg) !important;
+    color: var(--dark-text) !important;
+}
+
+.hidden {
+    display: none !important;
+}
+
+* {
+    border-color: var(--dark-border);
+}
+
+/* Main pages */
+.landing-page,
+.dashboard-page,
+.dashboard-panel,
+.admin-module-panel,
+.doctor-module-panel,
+.pa-module-panel,
+.patient-module-panel {
+    background: transparent !important;
+    color: var(--dark-text) !important;
+}
+
+/* Top bars and large containers */
+.dashboard-topbar,
+.main-dashboard-header,
+.dashboard-header,
+.auth-card,
+.status-card,
+.dashboard-user,
+.dashboard-user-box,
+.dashboard-panel {
+    background: linear-gradient(180deg, var(--dark-card), var(--dark-panel)) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+    box-shadow: var(--dark-shadow) !important;
+}
+
+/* Cards */
+.summary-card,
+.placeholder-card,
+.doctor-card,
+.settings-card,
+.settings-list-card,
+.settings-complete-panel,
+.assignment-card,
+.latest-invite-box,
+.invite-status-box,
+.queue-appointment-card,
+.queue-card,
+.consultation-panel-card,
+.consultation-summary,
+.previous-history-box,
+.consultation-form,
+.history-item,
+.prescription-patient-box,
+.prescription-visit-card,
+.prescription-preview-card,
+.prescription-document,
+.prescription-section,
+.online-request-card,
+.doctor-appointment-card,
+.appointment-detail-card,
+.appointment-detail-section,
+.finance-card,
+.compact-item,
+.back-link-box,
+.mini-log-item,
+.patient-card,
+.prescription-card {
+    background: linear-gradient(180deg, var(--dark-card), var(--dark-panel)) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26) !important;
+}
+
+/* Grid/list wrappers should not become white */
+.system-status-panel,
+.summary-grid,
+.placeholder-grid,
+.doctor-settings-grid,
+.settings-lists-grid,
+.pa-grid,
+.assignment-grid,
+.pa-booking-grid,
+.patient-grid,
+.patient-request-grid,
+.queue-filter-grid,
+.doctor-queue-layout,
+.prescription-layout,
+.appointment-filter-grid,
+.finance-filter-grid,
+.finance-summary-grid,
+.finance-breakdown-grid,
+.payment-form-grid,
+.compact-list,
+.scroll-list,
+.tall-scroll-list {
+    background: transparent !important;
+    color: var(--dark-text) !important;
+    box-shadow: none !important;
+}
+
+/* Form sections */
+form,
+.schedule-days-box,
+.day-checkbox,
+.checkbox-row,
+.checkbox-grid label,
+.inline-input-row,
+.selected-slot-box,
+.invite-link-row,
+.compact-copy-row {
+    background: transparent !important;
+    color: var(--dark-muted) !important;
+    border-color: var(--dark-border) !important;
+}
+
+.day-checkbox,
+.checkbox-grid label {
+    background: rgba(255, 255, 255, 0.045) !important;
+    border: 1px solid var(--dark-border) !important;
+}
+
+/* Text */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+strong,
+b {
+    color: var(--dark-text) !important;
+}
+
+p,
+span,
+small,
+label,
+li,
+td,
+th,
+.doctor-meta,
+.prescription-footer {
+    color: var(--dark-muted) !important;
+}
+
+.muted-text,
+.field-hint {
+    color: var(--dark-soft) !important;
+}
+
+.brand-badge {
+    background: linear-gradient(135deg, var(--dark-accent), #99ffe8) !important;
+    color: #061110 !important;
+    border: none !important;
+    box-shadow: 0 10px 28px rgba(95, 208, 181, 0.18) !important;
+}
+
+/* Inputs */
+input,
+textarea,
+select {
+    background: var(--dark-input) !important;
+    color: var(--dark-text) !important;
+    border: 1px solid var(--dark-border-strong) !important;
+    box-shadow: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #71827f !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--dark-accent) !important;
+    box-shadow: 0 0 0 3px var(--dark-accent-soft) !important;
+}
+
+select option {
+    background: var(--dark-card) !important;
+    color: var(--dark-text) !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--dark-text) !important;
+    box-shadow: 0 0 0 1000px var(--dark-input) inset !important;
+}
+
+/* Buttons */
+button,
+.auth-card button,
+.settings-card button,
+.queue-card-actions button,
+.slot-button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    background: linear-gradient(135deg, var(--dark-accent), var(--dark-accent-2)) !important;
+    color: #061110 !important;
+    border: none !important;
+    box-shadow: 0 12px 28px rgba(95, 208, 181, 0.15) !important;
+}
+
+button:hover,
+.slot-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 34px rgba(95, 208, 181, 0.22) !important;
+}
+
+.secondary-button {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--dark-text) !important;
+    border: 1px solid var(--dark-border-strong) !important;
+    box-shadow: none !important;
+}
+
+.danger-button,
+.icon-button {
+    background: var(--dark-danger-soft) !important;
+    color: #ffb0b0 !important;
+    border: 1px solid rgba(255, 119, 119, 0.28) !important;
+    box-shadow: none !important;
+}
+
+/* Tabs */
+.tab-bar,
+.doctor-module-tabs,
+.login-role-toggle {
+    background: rgba(255, 255, 255, 0.045) !important;
+    border: 1px solid var(--dark-border) !important;
+    box-shadow: none !important;
+}
+
+.tab-button,
+.doctor-module-tab,
+.pa-module-tab,
+.admin-module-tab,
+.patient-module-tab,
+.login-role-toggle button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    color: var(--dark-muted) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+}
+
+.tab-button.active,
+.doctor-module-tab.active,
+.pa-module-tab.active,
+.admin-module-tab.active,
+.patient-module-tab.active,
+.login-role-toggle button.active {
+    background: var(--dark-accent-soft) !important;
+    color: var(--dark-accent) !important;
+    border-color: rgba(95, 208, 181, 0.28) !important;
+}
+
+/* Slots */
+.slot-button {
+    background: rgba(255, 255, 255, 0.045) !important;
+    color: var(--dark-text) !important;
+    border: 1px solid var(--dark-border) !important;
+    text-align: left !important;
+}
+
+.slot-button.selected {
+    background: var(--dark-accent-soft) !important;
+    border-color: var(--dark-accent) !important;
+}
+
+/* Status pills */
+.queue-status-pill,
+.status-pill {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--dark-muted) !important;
+    border: 1px solid var(--dark-border) !important;
+}
+
+.queue-status-pill.waiting,
+.queue-status-pill.paid,
+.status-pill.paid {
+    background: var(--dark-success-soft) !important;
+    color: #a2f2cc !important;
+}
+
+.queue-status-pill.pending_fee,
+.queue-status-pill.pending,
+.status-pill.pending {
+    background: var(--dark-warning-soft) !important;
+    color: #f5d98d !important;
+}
+
+.queue-status-pill.completed,
+.status-pill.completed {
+    background: var(--dark-accent-soft) !important;
+    color: var(--dark-accent) !important;
+}
+
+.queue-status-pill.cancelled,
+.queue-status-pill.no_show,
+.status-pill.cancelled,
+.status-pill.no_show {
+    background: var(--dark-danger-soft) !important;
+    color: #ffb0b0 !important;
+}
+
+/* Messages */
+.form-result {
+    background: rgba(255, 255, 255, 0.045) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-muted) !important;
+}
+
+.form-result.ok {
+    background: var(--dark-success-soft) !important;
+    color: #a2f2cc !important;
+}
+
+.form-result.error {
+    background: var(--dark-danger-soft) !important;
+    color: #ffb0b0 !important;
+}
+
+.form-result.pending {
+    background: var(--dark-warning-soft) !important;
+    color: #f5d98d !important;
+}
+
+/* Finance */
+.finance-card strong,
+.summary-card strong {
+    color: var(--dark-accent) !important;
+}
+
+/* Links */
+a {
+    color: var(--dark-accent) !important;
+}
+
+/* Scrollbars */
+#doctorSchedulesList::-webkit-scrollbar-track,
+.scroll-list::-webkit-scrollbar-track,
+.tall-scroll-list::-webkit-scrollbar-track,
+.prescription-preview-box::-webkit-scrollbar-track {
+    background: var(--dark-panel) !important;
+}
+
+#doctorSchedulesList::-webkit-scrollbar-thumb,
+.scroll-list::-webkit-scrollbar-thumb,
+.tall-scroll-list::-webkit-scrollbar-thumb,
+.prescription-preview-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Tables */
+table,
+thead,
+tbody,
+tr,
+td,
+th {
+    background: transparent !important;
+    border-color: var(--dark-border) !important;
+}
+
+/* Keep prescription printing white */
+@media print {
+    html,
+    body,
+    .prescription-document,
+    .prescription-document *,
+    .prescription-print-area,
+    .prescription-print-area *,
+    #prescriptionPrintArea,
+    #prescriptionPrintArea * {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        border-color: #000 !important;
+    }
+
+    button,
+    .dashboard-topbar,
+    .main-dashboard-header,
+    .doctor-module-tabs,
+    .form-result,
+    .dashboard-header {
+        display: none !important;
+    }
+}
