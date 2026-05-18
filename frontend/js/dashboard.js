@@ -1227,34 +1227,61 @@ function showDashboardForRole(user) {
         }).join("");
     }
 
-    function renderDoctorPaInvites() {
-        const list = document.getElementById("doctorPaInvitesList");
+ function renderDoctorPaInvites() {
+    const list =
+        document.getElementById("doctorPaInvitesList") ||
+        document.getElementById("paInviteList");
 
-        if (!list) {
-            return;
-        }
-
-        const invites = doctorSettingsCache.paInvites || [];
-
-        if (!invites.length) {
-            list.innerHTML = `<p class="muted-text">No PA invites found.</p>`;
-            return;
-        }
-
-        list.innerHTML = invites.map((invite) => {
-            const token = invite.invite_token;
-            const link = token ? `${window.location.origin}${window.location.pathname.replace("dashboard.html", "")}pa-register.html?token=${token}` : "";
-
-            return `
-                <div class="compact-item">
-                    <strong>${invite.email || invite.pa_email || "PA Invite"}</strong>
-                    <span>CNIC: ${invite.invited_cnic || invite.cnic || "N/A"}</span>
-                    <span>Status: ${invite.status || "pending"}</span>
-                    ${link ? `<span>Link: ${link}</span>` : ""}
-                </div>
-            `;
-        }).join("");
+    if (!list) {
+        return;
     }
+
+    const invites = doctorSettingsCache.paInvites || [];
+
+    if (!invites.length) {
+        list.innerHTML = `<p class="muted-text">No PA invites found.</p>`;
+        return;
+    }
+
+    list.innerHTML = invites.map((invite) => {
+        const token = invite.invite_token;
+        const basePath = window.location.pathname.replace("dashboard.html", "");
+        const link = token
+            ? `${window.location.origin}${basePath}pa-register.html?token=${token}`
+            : "";
+
+        return `
+            <div class="compact-item">
+                <strong>${invite.email || invite.pa_email || invite.invited_email || "PA Invite"}</strong>
+                <span>CNIC: ${invite.invited_cnic || invite.cnic || "N/A"}</span>
+                <span>Status: ${invite.status || "pending"}</span>
+
+                ${
+                    link
+                        ? `
+                            <button
+                                type="button"
+                                class="primary-auth-link pa-invite-open-button"
+                                data-pa-invite-url="${link}"
+                                style="display:inline-block; margin-top:8px; pointer-events:auto; position:relative; z-index:50;"
+                            >
+                                Open PA Registration Link
+                            </button>
+
+                            <input
+                                type="text"
+                                readonly
+                                value="${link}"
+                                style="margin-top:8px; cursor:text; pointer-events:auto; position:relative; z-index:50;"
+                                onclick="this.select();"
+                            >
+                          `
+                        : `<span class="muted-text">Invite token not available.</span>`
+                }
+            </div>
+        `;
+    }).join("");
+}
 
     async function inviteOrLinkPa(event) {
         event.preventDefault();
@@ -1808,4 +1835,20 @@ function showDashboardForRole(user) {
     }
 
     verifySession();
+    document.addEventListener("click", (event) => {
+    const inviteButton = event.target.closest("[data-pa-invite-url]");
+
+    if (!inviteButton) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const url = inviteButton.getAttribute("data-pa-invite-url");
+
+    if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+    }
+}, true);
 });
