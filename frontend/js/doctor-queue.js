@@ -22,9 +22,13 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.hostname === "localhost" ||
         window.location.protocol === "file:";
 
-    const API_BASE_URL = isLocalFrontend
-        ? window.HM_CONFIG.LOCAL_API_URL
-        : window.HM_CONFIG.PRODUCTION_API_URL;
+    const API_BASE_URL = window.HM_CONFIG
+        ? (
+            isLocalFrontend
+                ? window.HM_CONFIG.LOCAL_API_URL
+                : window.HM_CONFIG.PRODUCTION_API_URL
+        )
+        : "http://127.0.0.1:5000";
 
     let activeAppointmentId = null;
     let activeConsultationData = null;
@@ -103,13 +107,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const doctorConsultationPanel = document.getElementById("doctorConsultationPanel");
 
     function todayIsoDate() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
 
-    return `${year}-${month}-${day}`;
-}
+        return `${year}-${month}-${day}`;
+    }
 
     function showMessage(message, type) {
         doctorQueueMessage.textContent = message;
@@ -211,34 +215,35 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadDoctorQueue() {
-        try {
-            if (!doctorQueueDate.value) {
-                doctorQueueDate.value = todayIsoDate();
-            }
-
-            showMessage("Loading doctor queue...", "pending");
-
-            const params = new URLSearchParams();
-            params.set("date", doctorQueueDate.value);
-            params.set("status", doctorQueueStatus.value || "active");
-
-            if (doctorQueueHospital.value) {
-                params.set("doctor_hospital_id", doctorQueueHospital.value);
-            }
-
-            if (doctorQueuePa.value) {
-                params.set("pa_id", doctorQueuePa.value);
-            }
-
-            const result = await apiRequest(`/api/doctor/queue?${params.toString()}`);
-
-            renderQueue(result.data || []);
-
-            showMessage(`${(result.data || []).length} queue item(s) loaded.`, "ok");
-        } catch (error) {
-            showMessage(error.message, "error");
+    try {
+        if (!doctorQueueDate.value) {
+            doctorQueueDate.value = todayIsoDate();
         }
+
+        showMessage("Loading doctor queue...", "pending");
+
+        const params = new URLSearchParams();
+        params.set("date", doctorQueueDate.value);
+        params.set("status", doctorQueueStatus.value || "active");
+        params.set("_", String(Date.now()));
+
+        if (doctorQueueHospital.value) {
+            params.set("doctor_hospital_id", doctorQueueHospital.value);
+        }
+
+        if (doctorQueuePa.value) {
+            params.set("pa_id", doctorQueuePa.value);
+        }
+
+        const result = await apiRequest(`/api/doctor/queue?${params.toString()}`);
+
+        renderQueue(result.data || []);
+
+        showMessage(`${(result.data || []).length} queue item(s) loaded.`, "ok");
+    } catch (error) {
+        showMessage(error.message, "error");
     }
+}
 
     function renderQueue(appointments) {
         if (!appointments.length) {
@@ -251,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const canStart = appointment.status === "waiting";
             const canOpen = appointment.status === "in_consultation";
             const isCompleted = appointment.status === "completed";
+            const canRemove = appointment.status === "pending_fee" || appointment.status === "waiting";
 
             return `
                 <div class="queue-appointment-card" data-appointment-id="${appointment.appointment_id}">
@@ -305,6 +311,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                 View Completed
                             </button>
                         ` : ""}
+
+                        ${canRemove ? `
+                            <button type="button" class="danger-button" data-action="dequeue">
+                                🗑 Remove
+                            </button>
+                        ` : ""}
                     </div>
                 </div>
             `;
@@ -312,19 +324,63 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function markPaid(appointmentId) {
-        try {
-            showMessage("Marking fee as paid...", "pending");
+    const card = doctorQueueList.querySelector(`[data-appointment-id="${appointmentId}"]`);
 
-            const result = await apiRequest(`/api/doctor/appointments/${appointmentId}/mark-paid`, {
-                method: "POST"
-            });
+    try {
+        showMessage("Marking fee as paid...", "pending");
 
-            showMessage(result.message, "ok");
-            await loadDoctorQueue();
-        } catch (error) {
-            showMessage(error.message, "error");
+        const result = await apiRequest(`/api/doctor/appointments/${appointmentId}/mark-paid`, {
+            method: "POST"
+        });
+
+        const updated = result.data || {};
+
+        if (card) {
+            const feeMeta = Array.from(card.querySelectorAll(".queue-card-meta span"))
+                .find((span) => span.textContent.trim().startsWith("Fee:"));
+
+            if (feeMeta) {
+                const feeValue = updated.fee_charged || feeMeta.textContent.split("(")[0].replace("Fee:", "").trim();
+                feeMeta.textContent = `Fee: ${feeValue} (paid)`;
+            }
+
+            const statusPill = card.querySelector(".queue-status-pill");
+
+            if (statusPill) {
+                statusPill.className = "queue-status-pill waiting";
+                statusPill.textContent = "Waiting";
+            }
+
+            let actions = card.querySelector(".queue-card-actions");
+
+            if (actions) {
+                const markPaidButton = actions.querySelector("[data-action='mark-paid']");
+
+                if (markPaidButton) {
+                    markPaidButton.remove();
+                }
+
+                const alreadyHasStart = actions.querySelector("[data-action='start']");
+
+                if (!alreadyHasStart) {
+                    const startButton = document.createElement("button");
+                    startButton.type = "button";
+                    startButton.setAttribute("data-action", "start");
+                    startButton.textContent = "Start Consultation";
+                    actions.appendChild(startButton);
+                }
+            }
         }
+
+        showMessage(result.message || "Fee marked as paid.", "ok");
+
+        setTimeout(() => {
+            loadDoctorQueue();
+        }, 300);
+    } catch (error) {
+        showMessage(error.message, "error");
     }
+}
 
     async function prioritizeAppointment(appointmentId) {
         const levelInput = window.prompt("Enter priority level from 1 to 10", "5");
@@ -355,6 +411,54 @@ document.addEventListener("DOMContentLoaded", () => {
             showMessage(error.message, "error");
         }
     }
+
+    async function dequeueAppointment(appointmentId) {
+    const confirmed = window.confirm("Remove this patient from the queue? This will cancel the appointment.");
+
+    if (!confirmed) {
+        return;
+    }
+
+    const reason = window.prompt("Reason for removing from queue:", "Removed from queue by doctor");
+
+    if (reason === null) {
+        return;
+    }
+
+    const card = doctorQueueList.querySelector(`[data-appointment-id="${appointmentId}"]`);
+
+    try {
+        showMessage("Removing patient from queue...", "pending");
+
+        const result = await apiRequest(`/api/doctor/appointments/${appointmentId}/dequeue`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                reason
+            })
+        });
+
+        if (card) {
+            card.remove();
+        }
+
+        const remainingCards = doctorQueueList.querySelectorAll(".queue-appointment-card").length;
+
+        showMessage(result.message || "Patient removed from queue.", "ok");
+
+        if (remainingCards === 0) {
+            doctorQueueList.innerHTML = `<p class="muted-text">No appointments found.</p>`;
+        }
+
+        setTimeout(() => {
+            loadDoctorQueue();
+        }, 300);
+    } catch (error) {
+        showMessage(error.message, "error");
+    }
+}
 
     async function startConsultation(appointmentId) {
         try {
@@ -393,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderConsultationPanel(data) {
         const appointment = data.appointment;
         const visit = data.visit || {};
+        const diagnosis = data.diagnosis || {};
         const dynamicFields = data.dynamic_fields || [];
         const previousHistory = data.previous_history || [];
 
@@ -455,13 +560,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 <textarea id="consultationClinicalNotes" placeholder="General clinical notes">${visit.clinical_notes || ""}</textarea>
 
                 <label>Diagnosis</label>
-                <textarea id="consultationDiagnosis" placeholder="Final diagnosis" required></textarea>
+                <textarea id="consultationDiagnosis" placeholder="Final diagnosis" required>${diagnosis.diagnosis_text || ""}</textarea>
 
                 <label>Treatment Plan</label>
-                <textarea id="consultationTreatmentPlan" placeholder="Treatment plan / prescription summary"></textarea>
+                <textarea id="consultationTreatmentPlan" placeholder="Treatment plan / prescription summary">${diagnosis.treatment_plan || ""}</textarea>
 
                 <label>Follow-up Notes</label>
-                <textarea id="consultationFollowUpNotes" placeholder="Follow-up advice"></textarea>
+                <textarea id="consultationFollowUpNotes" placeholder="Follow-up advice">${diagnosis.follow_up_notes || ""}</textarea>
 
                 <h4>Doctor Custom Fields</h4>
 
@@ -650,6 +755,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (action === "open") {
             openConsultation(appointmentId);
         }
+
+        if (action === "dequeue") {
+            dequeueAppointment(appointmentId);
+        }
     }
 
     async function initializeDoctorQueue() {
@@ -678,6 +787,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    window.HM_LOAD_DOCTOR_QUEUE = loadDoctorQueue;
+
     setInterval(() => {
         const visible = !queueTab.classList.contains("hidden");
 
@@ -685,4 +796,6 @@ document.addEventListener("DOMContentLoaded", () => {
             loadDoctorQueue();
         }
     }, 30000);
+
+    initializeDoctorQueue();
 });
