@@ -21,8 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
         paInvites: []
     };
 
-    let loading = false;
-    let lastAutoLoad = 0;
+    let settingsLoading = false;
+    let paDataLoading = false;
+    let initialDoctorLoadDone = false;
 
     function getToken() {
         return localStorage.getItem("hm_token");
@@ -39,6 +40,16 @@ document.addEventListener("DOMContentLoaded", () => {
     function isDoctor() {
         const user = getUser();
         return user && user.role === "doctor";
+    }
+
+    function doctorDashboardIsVisible() {
+        const doctorDashboard = document.getElementById("doctorDashboard");
+
+        return doctorDashboard && !doctorDashboard.classList.contains("hidden");
+    }
+
+    function shouldWorkNow() {
+        return isDoctor() && doctorDashboardIsVisible();
     }
 
     function byId(...ids) {
@@ -63,7 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const box = byId(
             "doctorSettingsMessage",
             "doctorDashboardMessage",
-            "paMessage"
+            "paMessage",
+            "dashboardMessage"
         );
 
         if (!box) {
@@ -86,14 +98,12 @@ document.addEventListener("DOMContentLoaded", () => {
             throw new Error("Login session expired.");
         }
 
-        const headers = {
-            ...(options.headers || {}),
-            "Authorization": `Bearer ${token}`
-        };
-
         const response = await fetch(`${API_BASE_URL}${path}`, {
             ...options,
-            headers
+            headers: {
+                ...(options.headers || {}),
+                "Authorization": `Bearer ${token}`
+            }
         });
 
         let result = {};
@@ -105,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!response.ok) {
-            console.log("DOCTOR_SETTINGS_BRIDGE_API_ERROR:", result);
+            console.log("DOCTOR_SETTINGS_API_ERROR:", path, result);
             throw new Error(result.error || result.message || "Request failed.");
         }
 
@@ -155,22 +165,87 @@ document.addEventListener("DOMContentLoaded", () => {
         return schedule.schedule_id || schedule.id || schedule.doctor_hospital_schedule_id;
     }
 
+    function buildPaInviteLink(token) {
+        if (!token) {
+            return "";
+        }
+
+        const basePath = window.location.pathname.replace("dashboard.html", "");
+
+        return `${window.location.origin}${basePath}pa-register.html?token=${token}`;
+    }
+
+    function renderClickableInviteLink(link) {
+    if (!link) {
+        return `<span class="muted-text">Invite token not available.</span>`;
+    }
+
+    return `
+        <div class="invite-link-row" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button
+                type="button"
+                class="primary-auth-link pa-invite-open-button"
+                data-pa-invite-url="${link}"
+                style="display:inline-block; width:max-content; pointer-events:auto; position:relative; z-index:999;"
+            >
+                Open PA Registration Link
+            </button>
+
+            <input
+                type="text"
+                readonly
+                value="${link}"
+                class="pa-invite-link-input"
+                onclick="this.select();"
+                style="cursor:text; pointer-events:auto; position:relative; z-index:999;"
+            >
+        </div>
+    `;
+}
+
+    function enforceScheduleTimePickers() {
+        allByIds(
+            "scheduleStartTime",
+            "scheduleEndTime",
+            "doctorScheduleStart",
+            "doctorScheduleEnd"
+        ).forEach((input) => {
+            input.setAttribute("type", "time");
+            input.setAttribute("step", "60");
+            input.removeAttribute("placeholder");
+        });
+    }
+
+    function getSelectedDays() {
+        const oldDays = Array.from(document.querySelectorAll("input[name='scheduleDay']:checked"))
+            .map((checkbox) => Number(checkbox.value));
+
+        const newDays = Array.from(document.querySelectorAll("#doctorScheduleDays input[type='checkbox']:checked"))
+            .map((checkbox) => Number(checkbox.value));
+
+        return Array.from(new Set([...oldDays, ...newDays]));
+    }
+
+    function extractData(result) {
+        return result.data || result || {};
+    }
+
     async function loadDoctorSettings() {
-        if (!isDoctor()) {
+        if (!shouldWorkNow()) {
             return;
         }
 
-        if (loading) {
+        if (settingsLoading) {
             return;
         }
 
-        loading = true;
+        settingsLoading = true;
 
         try {
             setMessage("Loading doctor settings...", "pending");
 
             const result = await apiRequest("/api/doctor/settings");
-            const data = result.data || result;
+            const data = extractData(result);
 
             settingsCache.hospitals =
                 data.hospitals ||
@@ -194,46 +269,63 @@ document.addEventListener("DOMContentLoaded", () => {
             renderHospitalSelects();
             renderSchedules();
             renderFields();
+            enforceScheduleTimePickers();
 
             setMessage("Doctor settings loaded.", "ok");
         } catch (error) {
             setMessage(error.message, "error");
         } finally {
-            loading = false;
+            settingsLoading = false;
         }
     }
 
     async function loadDoctorPaData() {
-        if (!isDoctor()) {
+        if (!shouldWorkNow()) {
             return;
         }
 
-        try {
-            const linksResult = await apiRequest("/api/doctor/pa-links");
-            settingsCache.paLinks =
-                linksResult.data ||
-                linksResult.links ||
-                linksResult.pa_links ||
-                [];
-        } catch (error) {
-            settingsCache.paLinks = [];
-            console.log("PA_LINKS_LOAD_WARNING:", error.message);
+        if (paDataLoading) {
+            return;
         }
 
-        try {
-            const invitesResult = await apiRequest("/api/doctor/pa-invites");
-            settingsCache.paInvites =
-                invitesResult.data ||
-                invitesResult.invites ||
-                invitesResult.pa_invites ||
-                [];
-        } catch (error) {
-            settingsCache.paInvites = [];
-            console.log("PA_INVITES_LOAD_WARNING:", error.message);
-        }
+        paDataLoading = true;
 
-        renderPaLinks();
-        renderPaInvites();
+        try {
+            setMessage("Loading PA data...", "pending");
+
+            try {
+                const linksResult = await apiRequest("/api/doctor/pa-links");
+                settingsCache.paLinks =
+                    linksResult.data ||
+                    linksResult.links ||
+                    linksResult.pa_links ||
+                    [];
+            } catch (error) {
+                settingsCache.paLinks = [];
+                console.log("PA_LINKS_LOAD_WARNING:", error.message);
+            }
+
+            try {
+                const invitesResult = await apiRequest("/api/doctor/pa-invites");
+                settingsCache.paInvites =
+                    invitesResult.data ||
+                    invitesResult.invites ||
+                    invitesResult.pa_invites ||
+                    [];
+            } catch (error) {
+                settingsCache.paInvites = [];
+                console.log("PA_INVITES_LOAD_WARNING:", error.message);
+            }
+
+            renderPaLinks();
+            renderPaInvites();
+
+            setMessage("PA data loaded.", "ok");
+        } catch (error) {
+            setMessage(error.message, "error");
+        } finally {
+            paDataLoading = false;
+        }
     }
 
     async function loadAllDoctorSettingsData() {
@@ -242,47 +334,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderHospitals() {
-        const lists = allByIds("doctorHospitalsList");
-
-        lists.forEach((list) => {
+        allByIds("doctorHospitalsList").forEach((list) => {
             if (!settingsCache.hospitals.length) {
                 list.innerHTML = `<p class="muted-text">No hospitals added yet.</p>`;
                 return;
             }
 
-            list.innerHTML = settingsCache.hospitals.map((hospital) => {
-                return `
-                    <div class="compact-item">
-                        <strong>${hospitalName(hospital)}</strong>
-                        <span>City: ${hospital.city || "N/A"}</span>
-                        <span>Address: ${hospital.address || "N/A"}</span>
-                        <span>Status: ${hospital.is_active === false ? "Inactive" : "Active"}</span>
-                    </div>
-                `;
-            }).join("");
+            list.innerHTML = settingsCache.hospitals.map((hospital) => `
+                <div class="compact-item">
+                    <strong>${hospitalName(hospital)}</strong>
+                    <span>City: ${hospital.city || "N/A"}</span>
+                    <span>Address: ${hospital.address || "N/A"}</span>
+                    <span>Status: ${hospital.is_active === false ? "Inactive" : "Active"}</span>
+                </div>
+            `).join("");
         });
     }
 
     function renderHospitalSelects() {
-        const selects = allByIds(
+        const options =
+            `<option value="">Select hospital</option>` +
+            settingsCache.hospitals.map((hospital) => `
+                <option value="${hospitalId(hospital)}">
+                    ${hospitalName(hospital)}${hospital.city ? " - " + hospital.city : ""}
+                </option>
+            `).join("");
+
+        allByIds(
             "scheduleHospital",
             "doctorScheduleHospital",
             "paInviteHospital",
             "doctorPaHospital"
-        );
-
-        const options =
-            `<option value="">Select hospital</option>` +
-            settingsCache.hospitals.map((hospital) => {
-                return `
-                    <option value="${hospitalId(hospital)}">
-                        ${hospitalName(hospital)}${hospital.city ? " - " + hospital.city : ""}
-                    </option>
-                `;
-            }).join("");
-
-        selects.forEach((select) => {
+        ).forEach((select) => {
             const oldValue = select.value;
+
             select.innerHTML = options;
 
             if (oldValue) {
@@ -292,9 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderSchedules() {
-        const lists = allByIds("doctorSchedulesList");
-
-        lists.forEach((list) => {
+        allByIds("doctorSchedulesList").forEach((list) => {
             if (!settingsCache.schedules.length) {
                 list.innerHTML = `<p class="muted-text">No schedules added yet.</p>`;
                 return;
@@ -327,61 +410,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderFields() {
-        const lists = allByIds("doctorFieldsList");
-
-        lists.forEach((list) => {
+        allByIds("doctorFieldsList").forEach((list) => {
             if (!settingsCache.fields.length) {
                 list.innerHTML = `<p class="muted-text">No dynamic fields added yet.</p>`;
                 return;
             }
 
-            list.innerHTML = settingsCache.fields.map((field) => {
-                return `
-                    <div class="compact-item">
-                        <strong>${field.field_label || field.label || "Field"}</strong>
-                        <span>Key: ${field.field_key || "N/A"}</span>
-                        <span>Type: ${field.field_type || "text"}</span>
-                        <span>Context: ${field.field_context || "consultation"}</span>
-                        <span>Required: ${field.is_required ? "Yes" : "No"}</span>
-                    </div>
-                `;
-            }).join("");
+            list.innerHTML = settingsCache.fields.map((field) => `
+                <div class="compact-item">
+                    <strong>${field.field_label || field.label || "Field"}</strong>
+                    <span>Key: ${field.field_key || "N/A"}</span>
+                    <span>Type: ${field.field_type || "text"}</span>
+                    <span>Context: ${field.field_context || "consultation"}</span>
+                    <span>Required: ${field.is_required ? "Yes" : "No"}</span>
+                </div>
+            `).join("");
         });
     }
 
     function renderPaLinks() {
-        const lists = allByIds(
-            "linkedPaList",
-            "doctorPaLinksList"
-        );
-
-        lists.forEach((list) => {
+        allByIds("linkedPaList", "doctorPaLinksList").forEach((list) => {
             if (!settingsCache.paLinks.length) {
                 list.innerHTML = `<p class="muted-text">No linked PAs loaded.</p>`;
                 return;
             }
 
-            list.innerHTML = settingsCache.paLinks.map((link) => {
-                return `
-                    <div class="compact-item">
-                        <strong>${link.full_name || link.pa_name || link.email || "PA"}</strong>
-                        <span>CNIC: ${link.cnic || "N/A"}</span>
-                        <span>Email: ${link.email || link.pa_email || "N/A"}</span>
-                        <span>Hospital: ${link.hospital_name || "N/A"}</span>
-                        <span>Status: ${link.is_active === false ? "Inactive" : "Active"}</span>
-                    </div>
-                `;
-            }).join("");
+            list.innerHTML = settingsCache.paLinks.map((link) => `
+                <div class="compact-item">
+                    <strong>${link.full_name || link.pa_name || link.email || "PA"}</strong>
+                    <span>CNIC: ${link.cnic || "N/A"}</span>
+                    <span>Email: ${link.email || link.pa_email || "N/A"}</span>
+                    <span>Hospital: ${link.hospital_name || "N/A"}</span>
+                    <span>Status: ${link.is_active === false ? "Inactive" : "Active"}</span>
+                </div>
+            `).join("");
         });
     }
 
     function renderPaInvites() {
-        const lists = allByIds(
-            "paInviteList",
-            "doctorPaInvitesList"
-        );
-
-        lists.forEach((list) => {
+        allByIds("paInviteList", "doctorPaInvitesList").forEach((list) => {
             if (!settingsCache.paInvites.length) {
                 list.innerHTML = `<p class="muted-text">No invites loaded.</p>`;
                 return;
@@ -389,20 +456,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
             list.innerHTML = settingsCache.paInvites.map((invite) => {
                 const token = invite.invite_token;
-                const basePath = window.location.pathname.replace("dashboard.html", "");
-                const link = token
-                    ? `${window.location.origin}${basePath}pa-register.html?token=${token}`
-                    : "";
+                const link = buildPaInviteLink(token);
 
                 return `
                     <div class="compact-item">
-                        <strong>${invite.email || invite.pa_email || "PA Invite"}</strong>
+                        <strong>${invite.email || invite.pa_email || invite.invited_email || "PA Invite"}</strong>
                         <span>CNIC: ${invite.invited_cnic || invite.cnic || "N/A"}</span>
                         <span>Status: ${invite.status || "pending"}</span>
-                        ${link ? `<span>Invite Link: ${link}</span>` : ""}
+
+                        ${renderClickableInviteLink(link)}
                     </div>
                 `;
             }).join("");
+        });
+    }
+
+    function scheduleAlreadyExists(hospitalIdValue, dayNumber, startTime, endTime) {
+        return settingsCache.schedules.some((schedule) => {
+            return (
+                String(schedule.doctor_hospital_id) === String(hospitalIdValue) &&
+                Number(schedule.day_of_week) === Number(dayNumber) &&
+                String(schedule.start_time || "").slice(0, 5) === String(startTime || "").slice(0, 5) &&
+                String(schedule.end_time || "").slice(0, 5) === String(endTime || "").slice(0, 5)
+            );
         });
     }
 
@@ -452,30 +528,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function getSelectedDays() {
-        const oldDays = Array.from(document.querySelectorAll("input[name='scheduleDay']:checked"))
-            .map((checkbox) => Number(checkbox.value));
-
-        const newDays = Array.from(document.querySelectorAll("#doctorScheduleDays input[type='checkbox']:checked"))
-            .map((checkbox) => Number(checkbox.value));
-
-        return Array.from(new Set([...oldDays, ...newDays]));
-    }
-
-    function scheduleAlreadyExists(hospitalIdValue, dayNumber, startTime, endTime) {
-        return settingsCache.schedules.some((schedule) => {
-            return (
-                String(schedule.doctor_hospital_id) === String(hospitalIdValue) &&
-                Number(schedule.day_of_week) === Number(dayNumber) &&
-                String(schedule.start_time || "").slice(0, 5) === String(startTime || "").slice(0, 5) &&
-                String(schedule.end_time || "").slice(0, 5) === String(endTime || "").slice(0, 5)
-            );
-        });
-    }
-
     async function addSchedule(event) {
         event.preventDefault();
         event.stopImmediatePropagation();
+
+        enforceScheduleTimePickers();
 
         const hospitalSelect = byId("scheduleHospital", "doctorScheduleHospital");
         const startInput = byId("scheduleStartTime", "doctorScheduleStart");
@@ -539,6 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 form.reset();
             }
 
+            enforceScheduleTimePickers();
             await loadDoctorSettings();
 
             setMessage("Schedule added successfully.", "ok");
@@ -725,17 +783,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const latestInviteBox = byId("latestInviteBox");
 
             if (latestInviteBox) {
-                const invite = result.data || result.invite || {};
+                const invite = result.data || result.invite || result || {};
                 const token = invite.invite_token || result.invite_token;
-                const basePath = window.location.pathname.replace("dashboard.html", "");
-                const link = token
-                    ? `${window.location.origin}${basePath}pa-register.html?token=${token}`
-                    : "";
+                const link = buildPaInviteLink(token);
 
                 latestInviteBox.classList.remove("hidden");
+
                 latestInviteBox.innerHTML = link
-                    ? `<strong>Invite created.</strong><br><span>${link}</span>`
-                    : `<strong>Invite/link created.</strong>`;
+                    ? `
+                        <strong>Invite created.</strong>
+                        ${renderClickableInviteLink(link)}
+                      `
+                    : `<strong>Invite/link created, but invite token was not returned.</strong>`;
             }
 
             await loadDoctorPaData();
@@ -766,19 +825,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        enforceScheduleTimePickers();
+
         allByIds("refreshDoctorSettingsButton", "refreshDoctorDashboardButton").forEach((button) => {
-            bindOnce(button, "click", (event) => {
+            bindOnce(button, "click", async (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                loadAllDoctorSettingsData();
+                await loadAllDoctorSettingsData();
             }, "RefreshDoctorSettings");
         });
 
         allByIds("refreshPaDataButton").forEach((button) => {
-            bindOnce(button, "click", (event) => {
+            bindOnce(button, "click", async (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                loadDoctorPaData();
+                await loadDoctorPaData();
             }, "RefreshDoctorPaData");
         });
 
@@ -816,71 +877,97 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function autoLoadIfDoctorVisible() {
-        if (!isDoctor()) {
+    document.addEventListener("click", (event) => {
+        const inviteTarget = event.target.closest("[data-pa-invite-url]");
+
+        if (!inviteTarget) {
             return;
         }
 
-        const doctorDashboard = document.getElementById("doctorDashboard");
+        event.preventDefault();
+        event.stopPropagation();
 
-        if (!doctorDashboard || doctorDashboard.classList.contains("hidden")) {
+        if (event.stopImmediatePropagation) {
+            event.stopImmediatePropagation();
+        }
+
+        const url = inviteTarget.getAttribute("data-pa-invite-url");
+
+        if (url) {
+            window.open(url, "_blank", "noopener,noreferrer");
+        }
+    }, true);
+
+    window.HM_LOAD_DOCTOR_SETTINGS = async function () {
+        if (!shouldWorkNow()) {
             return;
         }
 
-        const now = Date.now();
+        bindControls();
+        await loadAllDoctorSettingsData();
+    };
 
-        if (now - lastAutoLoad < 1200) {
+    window.HM_LOAD_DOCTOR_PA_DATA = async function () {
+        if (!shouldWorkNow()) {
             return;
         }
 
-        lastAutoLoad = now;
+        bindControls();
+        await loadDoctorPaData();
+    };
+
+    window.addEventListener("hm:tab-opened", async (event) => {
+        const panelId = event.detail && event.detail.panelId;
+
+        if (!shouldWorkNow()) {
+            return;
+        }
 
         bindControls();
 
-        const hospitalList = byId("doctorHospitalsList");
-        const scheduleList = byId("doctorSchedulesList");
-        const fieldList = byId("doctorFieldsList");
-
-        const looksEmpty =
-            (hospitalList && hospitalList.textContent.toLowerCase().includes("no hospitals")) ||
-            (scheduleList && scheduleList.textContent.toLowerCase().includes("no schedules")) ||
-            (fieldList && fieldList.textContent.toLowerCase().includes("no fields"));
-
-        if (looksEmpty || !settingsCache.hospitals.length) {
-            loadAllDoctorSettingsData();
-        }
-    }
-
-    window.HM_LOAD_DOCTOR_SETTINGS = loadAllDoctorSettingsData;
-    window.HM_LOAD_DOCTOR_PA_DATA = loadDoctorPaData;
-
-    window.addEventListener("hm:tab-opened", (event) => {
-        const panelId = event.detail && event.detail.panelId;
-
         if (panelId === "doctorSettingsTab") {
-            bindControls();
-            loadDoctorSettings();
+            await loadDoctorSettings();
+            return;
         }
 
         if (panelId === "doctorPaTab") {
-            bindControls();
-            loadDoctorSettings().then(loadDoctorPaData);
+            await loadDoctorPaData();
         }
     });
 
-    const observer = new MutationObserver(() => {
-        bindControls();
-        autoLoadIfDoctorVisible();
-    });
+    document.addEventListener("click", async (event) => {
+        const button = event.target.closest("button");
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+        if (!button || !shouldWorkNow()) {
+            return;
+        }
+
+        if (button.id === "refreshDoctorSettingsButton" || button.id === "refreshDoctorDashboardButton") {
+            event.preventDefault();
+            await loadAllDoctorSettingsData();
+            return;
+        }
+
+        if (button.id === "refreshPaDataButton") {
+            event.preventDefault();
+            await loadDoctorPaData();
+        }
     });
 
     bindControls();
+    enforceScheduleTimePickers();
 
-    setTimeout(autoLoadIfDoctorVisible, 400);
-    setTimeout(autoLoadIfDoctorVisible, 1400);
-    setTimeout(autoLoadIfDoctorVisible, 2800);
+    setTimeout(() => {
+        if (initialDoctorLoadDone) {
+            return;
+        }
+
+        initialDoctorLoadDone = true;
+
+        if (shouldWorkNow()) {
+            bindControls();
+            enforceScheduleTimePickers();
+            loadAllDoctorSettingsData();
+        }
+    }, 900);
 });

@@ -1853,3 +1853,11 @@ th {
         display: none !important;
     }
 }
+a.primary-auth-link,
+a.primary-auth-link:visited {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    position: relative !important;
+    z-index: 20 !important;
+}
