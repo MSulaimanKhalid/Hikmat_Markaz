@@ -22,9 +22,13 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.hostname === "localhost" ||
         window.location.protocol === "file:";
 
-    const API_BASE_URL = isLocalFrontend
-        ? window.HM_CONFIG.LOCAL_API_URL
-        : window.HM_CONFIG.PRODUCTION_API_URL;
+    const API_BASE_URL = window.HM_CONFIG
+        ? (
+            isLocalFrontend
+                ? window.HM_CONFIG.LOCAL_API_URL
+                : window.HM_CONFIG.PRODUCTION_API_URL
+        )
+        : "http://127.0.0.1:5000";
 
     let selectedSlot = null;
 
@@ -162,7 +166,13 @@ document.addEventListener("DOMContentLoaded", () => {
             headers
         });
 
-        const result = await response.json();
+        let result = {};
+
+        try {
+            result = await response.json();
+        } catch (error) {
+            throw new Error("Server returned an invalid response.");
+        }
 
         if (!response.ok) {
             console.log("PATIENT_PORTAL_API_ERROR:", result);
@@ -186,6 +196,13 @@ document.addEventListener("DOMContentLoaded", () => {
             hour: "2-digit",
             minute: "2-digit"
         });
+    }
+
+    function safeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     }
 
     function switchTab(tabId) {
@@ -287,17 +304,338 @@ document.addEventListener("DOMContentLoaded", () => {
 
         prescriptionsList.innerHTML = prescriptions.map((item) => {
             return `
-                <div class="compact-item">
+                <div class="compact-item" data-visit-id="${item.visit_id}">
                     <strong>${formatDateTime(item.appointment_datetime)}</strong>
                     <span>Doctor: ${item.doctor_name} (${item.specialization || "Doctor"})</span>
                     <span>Hospital: ${item.hospital_name} - ${item.hospital_city || ""}</span>
                     <span>Diagnosis: ${item.diagnosis_text || "N/A"}</span>
                     <span>Treatment: ${item.treatment_plan || "N/A"}</span>
                     <span>Follow-up: ${item.follow_up_notes || "N/A"}</span>
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-action="view-prescription-print"
+                        data-visit-id="${item.visit_id}"
+                    >
+                        View Print Format
+                    </button>
                 </div>
             `;
         }).join("");
     }
+
+    function buildPrescriptionPrintHtml(data) {
+        const prescription = data.prescription || {};
+        const fields = data.dynamic_fields || [];
+
+        const visitDate =
+            prescription.completed_at ||
+            prescription.started_at ||
+            prescription.scheduled_start ||
+            prescription.appointment_datetime ||
+            "";
+
+        const formattedDate = visitDate
+            ? new Date(visitDate).toLocaleString()
+            : "N/A";
+
+        const fieldRows = fields.length
+            ? fields.map((field) => `
+                <tr>
+                    <td>${safeHtml(field.field_label_snapshot || "Field")}</td>
+                    <td>${safeHtml(field.value_text || "")}</td>
+                </tr>
+            `).join("")
+            : `
+                <tr>
+                    <td colspan="2">No additional clinical fields recorded.</td>
+                </tr>
+            `;
+
+        return `
+            <!doctype html>
+            <html>
+            <head>
+                <title>Prescription</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        background: #ffffff;
+                        color: #111111;
+                        margin: 0;
+                        padding: 24px;
+                    }
+
+                    .actions {
+                        max-width: 850px;
+                        margin: 0 auto 16px auto;
+                        text-align: right;
+                    }
+
+                    button {
+                        padding: 10px 16px;
+                        border: none;
+                        background: #111111;
+                        color: #ffffff;
+                        cursor: pointer;
+                        border-radius: 6px;
+                    }
+
+                    .prescription-document {
+                        max-width: 850px;
+                        margin: 0 auto;
+                        border: 1px solid #222222;
+                        padding: 24px;
+                    }
+
+                    .prescription-header {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 24px;
+                        border-bottom: 2px solid #222222;
+                        padding-bottom: 12px;
+                        margin-bottom: 16px;
+                    }
+
+                    .prescription-header h1 {
+                        margin: 0;
+                        font-size: 26px;
+                    }
+
+                    .section {
+                        margin-top: 18px;
+                    }
+
+                    .section h3 {
+                        border-bottom: 1px solid #999999;
+                        padding-bottom: 6px;
+                        margin-bottom: 8px;
+                    }
+
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 8px;
+                    }
+
+                    td,
+                    th {
+                        border: 1px solid #999999;
+                        padding: 8px;
+                        text-align: left;
+                        vertical-align: top;
+                    }
+
+                    .footer {
+                        margin-top: 36px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-end;
+                    }
+
+                    .signature {
+                        width: 240px;
+                        border-top: 1px solid #111111;
+                        text-align: center;
+                        padding-top: 8px;
+                    }
+
+                    @media print {
+                        .actions {
+                            display: none;
+                        }
+
+                        body {
+                            padding: 0;
+                        }
+
+                        .prescription-document {
+                            border: none;
+                        }
+                    }
+                </style>
+            </head>
+
+            <body>
+                <div class="actions">
+                    <button onclick="window.print()">Print Prescription</button>
+                </div>
+
+                <div class="prescription-document">
+                    <div class="prescription-header">
+                        <div>
+                            <h1>Hikmat Markaz</h1>
+                            <p>${safeHtml(prescription.hospital_name || "Clinic / Hospital")}</p>
+                            <p>${safeHtml(prescription.hospital_address || "")}${prescription.hospital_city ? ", " + safeHtml(prescription.hospital_city) : ""}</p>
+                        </div>
+
+                        <div>
+                            <strong>Prescription</strong>
+                            <p>Date: ${safeHtml(formattedDate)}</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Doctor</h3>
+                        <p><strong>${safeHtml(prescription.doctor_name || "N/A")}</strong></p>
+                        <p>${safeHtml(prescription.doctor_specialization || "")}</p>
+                        <p>License: ${safeHtml(prescription.doctor_license_number || "N/A")}</p>
+                    </div>
+
+                    <div class="section">
+                        <h3>Patient</h3>
+                        <table>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>${safeHtml(prescription.patient_name || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CNIC</strong></td>
+                                <td>${safeHtml(prescription.patient_cnic || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gender</strong></td>
+                                <td>${safeHtml(prescription.patient_gender || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phone</strong></td>
+                                <td>${safeHtml(prescription.patient_phone || "N/A")}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="section">
+                        <h3>Vitals / Clinical Fields</h3>
+                        <table>
+                            <tr>
+                                <td><strong>BP</strong></td>
+                                <td>${safeHtml(prescription.bp || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pulse</strong></td>
+                                <td>${safeHtml(prescription.pulse || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Temperature</strong></td>
+                                <td>${safeHtml(prescription.temperature || "N/A")}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weight</strong></td>
+                                <td>${safeHtml(prescription.weight || "N/A")}</td>
+                            </tr>
+                            ${fieldRows}
+                        </table>
+                    </div>
+
+                    <div class="section">
+                        <h3>Diagnosis</h3>
+                        <p>${safeHtml(prescription.diagnosis_text || "N/A")}</p>
+                    </div>
+
+                    <div class="section">
+                        <h3>Treatment Plan / Prescription</h3>
+                        <p>${safeHtml(prescription.treatment_plan || "N/A")}</p>
+                    </div>
+
+                    <div class="section">
+                        <h3>Follow-up Notes</h3>
+                        <p>${safeHtml(prescription.follow_up_notes || "N/A")}</p>
+                    </div>
+
+                    <div class="footer">
+                        <div>
+                            <p>Generated by Hikmat Markaz</p>
+                        </div>
+
+                        <div class="signature">
+                            Doctor Signature
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+    }
+
+    async function openPrescriptionPrintFormat(visitId) {
+    if (!visitId) {
+        showMessage("Visit ID missing for this prescription.", "error");
+        return;
+    }
+
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+        showMessage("Popup blocked. Please allow popups for this site.", "error");
+        return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+        <!doctype html>
+        <html>
+        <head>
+            <title>Loading Prescription</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 24px;
+                }
+            </style>
+        </head>
+        <body>
+            <p>Loading prescription...</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+
+    try {
+        showMessage("Opening prescription print format...", "pending");
+
+        const result = await apiRequest(`/api/patient/prescriptions/visits/${visitId}/print`);
+        const html = buildPrescriptionPrintHtml(result.data || {});
+
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+
+        showMessage("Prescription print format opened.", "ok");
+    } catch (error) {
+        printWindow.document.open();
+        printWindow.document.write(`
+            <!doctype html>
+            <html>
+            <head>
+                <title>Prescription Error</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 24px;
+                        color: #111;
+                    }
+
+                    .error {
+                        border: 1px solid #cc0000;
+                        padding: 16px;
+                        border-radius: 8px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="error">
+                    <h2>Could not load prescription</h2>
+                    <p>${safeHtml(error.message)}</p>
+                </div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+
+        showMessage(error.message, "error");
+    }
+}
 
     async function loadPatientDoctors() {
         const result = await apiRequest("/api/patient/doctors");
@@ -452,6 +790,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
         selectSlot(Number(button.getAttribute("data-slot-index")));
     });
+
+    prescriptionsList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-action='view-prescription-print']");
+
+        if (!button) {
+            return;
+        }
+
+        const visitId = button.getAttribute("data-visit-id");
+        openPrescriptionPrintFormat(visitId);
+    });
+
+    window.HM_LOAD_PATIENT_PORTAL = loadPatientPortal;
+    window.HM_LOAD_PATIENT_PRESCRIPTIONS = loadPatientPrescriptions;
 
     loadPatientPortal();
 });

@@ -391,10 +391,11 @@ def patient_signup():
         }), 409
 
     password_hash = generate_password_hash(
-    password,
-    method="pbkdf2:sha256",
-    salt_length=16
+        password,
+        method="pbkdf2:sha256",
+        salt_length=16
     )
+
     try:
         with transaction() as cursor:
             cursor.execute("""
@@ -621,7 +622,6 @@ def patient_login():
             "error": str(error)
         }), 500
 
-    
 
 @patient_portal_bp.get("/me")
 @login_required(allowed_roles=["patient"])
@@ -749,6 +749,100 @@ def patient_prescriptions():
         "status": "ok",
         "message": "Patient prescriptions fetched.",
         "data": make_json_safe(visits)
+    })
+
+
+@patient_portal_bp.get("/prescriptions/visits/<int:visit_id>/print")
+@login_required(allowed_roles=["patient"])
+def patient_prescription_print_format(visit_id):
+    patient, error = require_active_patient()
+
+    if error:
+        body, status_code = error
+        return jsonify(body), status_code
+
+    prescription = fetch_one("""
+        select
+            v.visit_id,
+            v.appointment_id,
+            v.patient_id,
+            v.doctor_id,
+            v.started_at,
+            v.completed_at,
+            v.bp,
+            v.pulse,
+            v.temperature,
+            v.weight,
+            v.clinical_notes,
+
+            p.name as patient_name,
+            p.cnic as patient_cnic,
+            p.gender as patient_gender,
+            p.dob as patient_dob,
+            p.phone as patient_phone,
+            p.email as patient_email,
+
+            d.name as doctor_name,
+            d.specialization as doctor_specialization,
+            d.license_number as doctor_license_number,
+
+            dh.name as hospital_name,
+            dh.address as hospital_address,
+            dh.city as hospital_city,
+
+            a.appointment_datetime,
+            a.scheduled_start,
+            a.fee_charged,
+            a.fee_status,
+            a.status as appointment_status,
+
+            dg.diagnosis_text,
+            dg.treatment_plan,
+            dg.follow_up_notes
+        from public.visit v
+        join public.patient p
+          on p.patient_id = v.patient_id
+        join public.doctor d
+          on d.doctor_id = v.doctor_id
+        join public.appointment a
+          on a.appointment_id = v.appointment_id
+        left join public.doctor_hospital dh
+          on dh.id = a.doctor_hospital_id
+        left join public.diagnosis dg
+          on dg.visit_id = v.visit_id
+        where v.visit_id = %s
+          and v.patient_id = %s
+          and a.status = 'completed'
+        limit 1
+    """, (
+        visit_id,
+        patient["patient_id"]
+    ))
+
+    if not prescription:
+        return jsonify({
+            "status": "error",
+            "message": "Prescription not found for this patient."
+        }), 404
+
+    dynamic_fields = fetch_all("""
+        select
+            field_label_snapshot,
+            field_type_snapshot,
+            field_context_snapshot,
+            value_text
+        from public.visit_field_value
+        where visit_id = %s
+        order by field_value_id
+    """, (visit_id,))
+
+    return jsonify({
+        "status": "ok",
+        "message": "Prescription print format fetched.",
+        "data": make_json_safe({
+            "prescription": prescription,
+            "dynamic_fields": dynamic_fields
+        })
     })
 
 
@@ -1031,13 +1125,16 @@ def get_pa_online_requests():
             ar.confirmed_appointment_id,
             ar.rejection_reason,
             ar.created_at,
+
             p.cnic as patient_cnic,
             p.name as patient_name,
             p.gender as patient_gender,
             p.phone as patient_phone,
             p.email as patient_email,
+
             d.name as doctor_name,
             d.specialization,
+
             dh.name as hospital_name,
             dh.city as hospital_city
         from public.appointment_request ar

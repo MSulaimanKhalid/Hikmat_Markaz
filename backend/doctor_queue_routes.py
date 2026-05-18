@@ -5,8 +5,8 @@ import json
 
 from flask import Blueprint, request, jsonify, g
 
-from db import fetch_one, fetch_all, transaction
 from auth import login_required
+from db import fetch_one, fetch_all, execute_query, transaction
 
 
 doctor_queue_bp = Blueprint(
@@ -49,11 +49,13 @@ def parse_local_date(value):
 def get_day_range(target_date):
     start_dt = datetime.combine(target_date, time(0, 0), tzinfo=LOCAL_TZ)
     end_dt = start_dt + timedelta(days=1)
+
     return start_dt, end_dt
 
 
 def get_current_doctor():
-    return fetch_one("""
+    return fetch_one(
+        """
         select
             doctor_id,
             user_id,
@@ -65,7 +67,9 @@ def get_current_doctor():
         from public.doctor
         where user_id = %s
         limit 1
-    """, (g.current_user["user_id"],))
+        """,
+        (g.current_user["user_id"],)
+    )
 
 
 def require_approved_doctor():
@@ -87,7 +91,8 @@ def require_approved_doctor():
 
 
 def get_appointment_for_doctor(doctor_id, appointment_id):
-    return fetch_one("""
+    return fetch_one(
+        """
         select
             a.appointment_id,
             a.patient_id,
@@ -105,14 +110,17 @@ def get_appointment_for_doctor(doctor_id, appointment_id):
             a.actual_start,
             a.actual_end,
             a.notes,
+
             p.cnic as patient_cnic,
             p.name as patient_name,
             p.gender as patient_gender,
             p.dob as patient_dob,
             p.phone as patient_phone,
             p.email as patient_email,
+
             dh.name as hospital_name,
             dh.city as hospital_city,
+
             pa.full_name as pa_name,
             au.email as pa_email
         from public.appointment a
@@ -127,14 +135,17 @@ def get_appointment_for_doctor(doctor_id, appointment_id):
         where a.appointment_id = %s
           and a.doctor_id = %s
         limit 1
-    """, (
-        appointment_id,
-        doctor_id
-    ))
+        """,
+        (
+            appointment_id,
+            doctor_id
+        )
+    )
 
 
 def get_or_create_visit(cursor, appointment):
-    cursor.execute("""
+    cursor.execute(
+        """
         select
             visit_id,
             appointment_id,
@@ -150,14 +161,17 @@ def get_or_create_visit(cursor, appointment):
         from public.visit
         where appointment_id = %s
         limit 1
-    """, (appointment["appointment_id"],))
+        """,
+        (appointment["appointment_id"],)
+    )
 
     visit = cursor.fetchone()
 
     if visit:
         return dict(visit)
 
-    cursor.execute("""
+    cursor.execute(
+        """
         insert into public.visit
         (
             appointment_id,
@@ -178,11 +192,13 @@ def get_or_create_visit(cursor, appointment):
             pulse,
             temperature,
             weight
-    """, (
-        appointment["appointment_id"],
-        appointment["patient_id"],
-        appointment["doctor_id"]
-    ))
+        """,
+        (
+            appointment["appointment_id"],
+            appointment["patient_id"],
+            appointment["doctor_id"]
+        )
+    )
 
     return dict(cursor.fetchone())
 
@@ -196,7 +212,8 @@ def get_queue_filters():
         body, status_code = error
         return jsonify(body), status_code
 
-    hospitals = fetch_all("""
+    hospitals = fetch_all(
+        """
         select
             id,
             name,
@@ -206,9 +223,12 @@ def get_queue_filters():
         where doctor_id = %s
           and is_active = true
         order by name
-    """, (doctor["doctor_id"],))
+        """,
+        (doctor["doctor_id"],)
+    )
 
-    pas = fetch_all("""
+    pas = fetch_all(
+        """
         select distinct
             p.pa_id,
             p.full_name,
@@ -228,7 +248,9 @@ def get_queue_filters():
         where dp.doctor_id = %s
           and dp.is_active = true
         order by p.full_name
-    """, (doctor["doctor_id"],))
+        """,
+        (doctor["doctor_id"],)
+    )
 
     return jsonify({
         "status": "ok",
@@ -286,13 +308,15 @@ def get_doctor_queue():
     if status and status != "all":
         if status == "active":
             where_parts.append("a.status in ('pending_fee', 'waiting', 'in_consultation')")
+            where_parts.append("coalesce(a.status, '') not in ('cancelled', 'no_show', 'completed')")        
         else:
             where_parts.append("a.status = %s")
             params.append(status)
 
     where_clause = " and ".join(where_parts)
 
-    appointments = fetch_all(f"""
+    appointments = fetch_all(
+        f"""
         select
             a.appointment_id,
             a.patient_id,
@@ -310,12 +334,15 @@ def get_doctor_queue():
             a.actual_start,
             a.actual_end,
             a.notes,
+
             p.cnic as patient_cnic,
             p.name as patient_name,
             p.gender as patient_gender,
             p.phone as patient_phone,
+
             dh.name as hospital_name,
             dh.city as hospital_city,
+
             pa.full_name as pa_name,
             au.email as pa_email
         from public.appointment a
@@ -331,7 +358,9 @@ def get_doctor_queue():
         order by
             a.priority_level desc,
             a.appointment_datetime asc
-    """, tuple(params))
+        """,
+        tuple(params)
+    )
 
     return jsonify({
         "status": "ok",
@@ -360,32 +389,100 @@ def mark_appointment_paid(appointment_id):
             "message": "Appointment not found for this doctor."
         }), 404
 
-    rows = fetch_all("""
-        update public.appointment
-        set
-            fee_status = 'paid',
-            status = case
-                when status = 'pending_fee' then 'waiting'
-                else status
-            end,
-            updated_at = now()
-        where appointment_id = %s
-          and doctor_id = %s
-        returning
-            appointment_id,
-            fee_status,
-            status,
-            updated_at
-    """, (
-        appointment_id,
-        doctor["doctor_id"]
-    ))
+    if appointment["status"] in ("completed", "cancelled", "no_show"):
+        return jsonify({
+            "status": "error",
+            "message": "This appointment is already closed and cannot be marked paid."
+        }), 400
 
-    return jsonify({
-        "status": "ok",
-        "message": "Fee marked as paid.",
-        "data": make_json_safe(rows[0] if rows else None)
-    })
+    try:
+        with transaction() as cursor:
+            cursor.execute("""
+                update public.appointment
+                set
+                    fee_status = 'paid',
+                    status = case
+                        when status = 'pending_fee' then 'waiting'
+                        else status
+                    end,
+                    payment_method = coalesce(payment_method, 'cash'),
+                    payment_received_at = coalesce(payment_received_at, now()),
+                    payment_received_by_user_id = coalesce(payment_received_by_user_id, %s),
+                    updated_at = now()
+                where appointment_id = %s
+                  and doctor_id = %s
+                returning
+                    appointment_id,
+                    fee_status,
+                    status,
+                    fee_charged,
+                    payment_method,
+                    payment_received_at,
+                    updated_at
+            """, (
+                g.current_user["user_id"],
+                appointment_id,
+                doctor["doctor_id"]
+            ))
+
+            updated_appointment = dict(cursor.fetchone())
+
+            cursor.execute("""
+                insert into public.appointment_payment_log
+                (
+                    appointment_id,
+                    doctor_id,
+                    changed_by_user_id,
+                    changed_by_role,
+                    old_fee_status,
+                    new_fee_status,
+                    old_fee_charged,
+                    new_fee_charged,
+                    payment_method,
+                    payment_note
+                )
+                values
+                (
+                    %s,
+                    %s,
+                    %s,
+                    'doctor',
+                    %s,
+                    'paid',
+                    %s,
+                    %s,
+                    'cash',
+                    'Marked paid from doctor queue'
+                )
+            """, (
+                appointment_id,
+                doctor["doctor_id"],
+                g.current_user["user_id"],
+                appointment["fee_status"],
+                appointment["fee_charged"],
+                appointment["fee_charged"]
+            ))
+
+        return jsonify({
+            "status": "ok",
+            "message": "Fee marked as paid.",
+            "data": make_json_safe(updated_appointment)
+        })
+
+    except Exception as error:
+        print("MARK PAID ERROR:", str(error))
+
+        return jsonify({
+            "status": "error",
+            "message": "Failed to mark fee as paid.",
+            "error": str(error)
+        }), 500
+
+
+@doctor_queue_bp.post("/appointments/<int:appointment_id>/queue-mark-paid")
+@login_required(allowed_roles=["doctor"])
+def queue_mark_appointment_paid(appointment_id):
+    return mark_appointment_paid(appointment_id)
 
 
 @doctor_queue_bp.post("/appointments/<int:appointment_id>/prioritize")
@@ -423,7 +520,8 @@ def prioritize_appointment(appointment_id):
             "message": "Appointment not found for this doctor."
         }), 404
 
-    rows = fetch_all("""
+    rows = fetch_all(
+        """
         update public.appointment
         set
             priority_level = %s,
@@ -436,12 +534,14 @@ def prioritize_appointment(appointment_id):
             priority_level,
             priority_reason,
             updated_at
-    """, (
-        priority_level,
-        priority_reason,
-        appointment_id,
-        doctor["doctor_id"]
-    ))
+        """,
+        (
+            priority_level,
+            priority_reason,
+            appointment_id,
+            doctor["doctor_id"]
+        )
+    )
 
     return jsonify({
         "status": "ok",
@@ -476,15 +576,40 @@ def start_consultation(appointment_id):
             "message": "This appointment is already completed."
         }), 409
 
-    if appointment["fee_status"] == "pending":
+    if appointment["status"] == "cancelled":
+        return jsonify({
+            "status": "error",
+            "message": "This appointment is cancelled and cannot be started."
+        }), 409
+
+    if appointment["status"] == "no_show":
+        return jsonify({
+            "status": "error",
+            "message": "This appointment is marked as no-show and cannot be started."
+        }), 409
+
+    if appointment["status"] == "pending_fee":
         return jsonify({
             "status": "error",
             "message": "Fee is pending. Mark fee as paid before starting consultation."
         }), 409
 
+    if appointment["fee_status"] not in ("paid", "waived"):
+        return jsonify({
+            "status": "error",
+            "message": "Fee must be paid or waived before starting consultation."
+        }), 409
+
+    if appointment["status"] not in ("waiting", "in_consultation"):
+        return jsonify({
+            "status": "error",
+            "message": "Only waiting appointments can be started."
+        }), 409
+
     try:
         with transaction() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
                 update public.appointment
                 set
                     status = 'in_consultation',
@@ -496,13 +621,14 @@ def start_consultation(appointment_id):
                     appointment_id,
                     status,
                     actual_start
-            """, (
-                appointment_id,
-                doctor["doctor_id"]
-            ))
+                """,
+                (
+                    appointment_id,
+                    doctor["doctor_id"]
+                )
+            )
 
             updated_appointment = dict(cursor.fetchone())
-
             visit = get_or_create_visit(cursor, appointment)
 
         return jsonify({
@@ -544,7 +670,8 @@ def get_consultation_details(appointment_id):
             "message": "Appointment not found for this doctor."
         }), 404
 
-    visit = fetch_one("""
+    visit = fetch_one(
+        """
         select
             visit_id,
             appointment_id,
@@ -560,9 +687,34 @@ def get_consultation_details(appointment_id):
         from public.visit
         where appointment_id = %s
         limit 1
-    """, (appointment_id,))
+        """,
+        (appointment_id,)
+    )
 
-    dynamic_fields = fetch_all("""
+    diagnosis = None
+
+    if visit:
+        diagnosis = fetch_one(
+            """
+            select
+                diagnosis_id,
+                visit_id,
+                appointment_id,
+                doctor_id,
+                patient_id,
+                diagnosis_text,
+                treatment_plan,
+                follow_up_notes,
+                created_at
+            from public.diagnosis
+            where visit_id = %s
+            limit 1
+            """,
+            (visit["visit_id"],)
+        )
+
+    dynamic_fields = fetch_all(
+        """
         select
             field_id,
             field_label,
@@ -578,9 +730,12 @@ def get_consultation_details(appointment_id):
           and field_context = 'consultation'
           and is_active = true
         order by display_order, created_at
-    """, (doctor["doctor_id"],))
+        """,
+        (doctor["doctor_id"],)
+    )
 
-    previous_history = fetch_all("""
+    previous_history = fetch_all(
+        """
         select
             a.appointment_id,
             a.appointment_datetime,
@@ -605,10 +760,12 @@ def get_consultation_details(appointment_id):
           and a.status = 'completed'
         order by a.appointment_datetime desc
         limit 10
-    """, (
-        appointment["patient_id"],
-        appointment_id
-    ))
+        """,
+        (
+            appointment["patient_id"],
+            appointment_id
+        )
+    )
 
     return jsonify({
         "status": "ok",
@@ -616,6 +773,7 @@ def get_consultation_details(appointment_id):
         "data": make_json_safe({
             "appointment": appointment,
             "visit": visit,
+            "diagnosis": diagnosis,
             "dynamic_fields": dynamic_fields,
             "previous_history": previous_history
         })
@@ -648,6 +806,12 @@ def complete_consultation(appointment_id):
             "message": "This appointment is already completed."
         }), 409
 
+    if appointment["status"] not in ("in_consultation", "waiting"):
+        return jsonify({
+            "status": "error",
+            "message": "Start the consultation before completing it."
+        }), 409
+
     data = request.get_json(silent=True) or {}
 
     vitals = data.get("vitals") or {}
@@ -663,13 +827,16 @@ def complete_consultation(appointment_id):
             "message": "Diagnosis is required before completing consultation."
         }), 400
 
-    allowed_fields = fetch_all("""
+    allowed_fields = fetch_all(
+        """
         select field_id
         from public.doctor_form_field
         where doctor_id = %s
           and field_context = 'consultation'
           and is_active = true
-    """, (doctor["doctor_id"],))
+        """,
+        (doctor["doctor_id"],)
+    )
 
     allowed_field_ids = set(str(field["field_id"]) for field in allowed_fields)
 
@@ -677,7 +844,8 @@ def complete_consultation(appointment_id):
         with transaction() as cursor:
             visit = get_or_create_visit(cursor, appointment)
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 update public.visit
                 set
                     completed_at = now(),
@@ -700,23 +868,29 @@ def complete_consultation(appointment_id):
                     pulse,
                     temperature,
                     weight
-            """, (
-                clinical_notes,
-                clean_text(vitals.get("bp")),
-                clean_text(vitals.get("pulse")),
-                clean_text(vitals.get("temperature")),
-                clean_text(vitals.get("weight")),
-                visit["visit_id"]
-            ))
+                """,
+                (
+                    clinical_notes,
+                    clean_text(vitals.get("bp")),
+                    clean_text(vitals.get("pulse")),
+                    clean_text(vitals.get("temperature")),
+                    clean_text(vitals.get("weight")),
+                    visit["visit_id"]
+                )
+            )
 
             updated_visit = dict(cursor.fetchone())
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 delete from public.diagnosis
                 where visit_id = %s
-            """, (visit["visit_id"],))
+                """,
+                (visit["visit_id"],)
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 insert into public.diagnosis
                 (
                     visit_id,
@@ -738,22 +912,27 @@ def complete_consultation(appointment_id):
                     treatment_plan,
                     follow_up_notes,
                     created_at
-            """, (
-                visit["visit_id"],
-                appointment["appointment_id"],
-                appointment["doctor_id"],
-                appointment["patient_id"],
-                diagnosis_text,
-                treatment_plan,
-                follow_up_notes
-            ))
+                """,
+                (
+                    visit["visit_id"],
+                    appointment["appointment_id"],
+                    appointment["doctor_id"],
+                    appointment["patient_id"],
+                    diagnosis_text,
+                    treatment_plan,
+                    follow_up_notes
+                )
+            )
 
             diagnosis = dict(cursor.fetchone())
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 delete from public.visit_field_value
                 where visit_id = %s
-            """, (visit["visit_id"],))
+                """,
+                (visit["visit_id"],)
+            )
 
             inserted_field_values = []
 
@@ -769,7 +948,8 @@ def complete_consultation(appointment_id):
                 if value_text == "":
                     continue
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     insert into public.visit_field_value
                     (
                         visit_id,
@@ -783,15 +963,18 @@ def complete_consultation(appointment_id):
                         field_id,
                         value_text,
                         created_at
-                """, (
-                    visit["visit_id"],
-                    int(field_id),
-                    value_text
-                ))
+                    """,
+                    (
+                        visit["visit_id"],
+                        int(field_id),
+                        value_text
+                    )
+                )
 
                 inserted_field_values.append(dict(cursor.fetchone()))
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 update public.appointment
                 set
                     status = 'completed',
@@ -805,10 +988,12 @@ def complete_consultation(appointment_id):
                     actual_start,
                     actual_end,
                     updated_at
-            """, (
-                appointment_id,
-                doctor["doctor_id"]
-            ))
+                """,
+                (
+                    appointment_id,
+                    doctor["doctor_id"]
+                )
+            )
 
             updated_appointment = dict(cursor.fetchone())
 
@@ -829,5 +1014,92 @@ def complete_consultation(appointment_id):
         return jsonify({
             "status": "error",
             "message": "Failed to complete consultation.",
+            "error": str(error)
+        }), 500
+
+
+@doctor_queue_bp.post("/appointments/<int:appointment_id>/dequeue")
+@login_required(allowed_roles=["doctor"])
+def dequeue_appointment_from_queue(appointment_id):
+    doctor, error = require_approved_doctor()
+
+    if error:
+        body, status_code = error
+        return jsonify(body), status_code
+
+    data = request.get_json(silent=True) or {}
+    reason = clean_text(data.get("reason")) or "Removed from queue by doctor"
+
+    appointment = get_appointment_for_doctor(
+        doctor["doctor_id"],
+        appointment_id
+    )
+
+    if not appointment:
+        return jsonify({
+            "status": "error",
+            "message": "Appointment not found for this doctor."
+        }), 404
+
+    if appointment["status"] in ("completed", "cancelled", "no_show"):
+        return jsonify({
+            "status": "error",
+            "message": "This appointment is already closed."
+        }), 400
+
+    if appointment["status"] == "in_consultation":
+        return jsonify({
+            "status": "error",
+            "message": "Consultation already started. Complete the consultation instead of removing it from queue."
+        }), 400
+
+    try:
+        with transaction() as cursor:
+            cursor.execute("""
+                update public.appointment
+                set
+                    status = 'cancelled',
+                    notes = concat_ws(
+                        E'\n',
+                        nullif(notes, ''),
+                        concat('Dequeued by doctor. Reason: ', %s)
+                    ),
+                    updated_at = now()
+                where appointment_id = %s
+                  and doctor_id = %s
+                  and status in ('pending_fee', 'waiting', 'scheduled')
+                returning
+                    appointment_id,
+                    status,
+                    notes,
+                    updated_at
+            """, (
+                reason,
+                appointment_id,
+                doctor["doctor_id"]
+            ))
+
+            row = cursor.fetchone()
+
+            if not row:
+                return jsonify({
+                    "status": "error",
+                    "message": "Appointment could not be removed from queue."
+                }), 400
+
+            updated_appointment = dict(row)
+
+        return jsonify({
+            "status": "ok",
+            "message": "Patient removed from queue.",
+            "data": make_json_safe(updated_appointment)
+        })
+
+    except Exception as error:
+        print("DEQUEUE APPOINTMENT ERROR:", str(error))
+
+        return jsonify({
+            "status": "error",
+            "message": "Failed to remove patient from queue.",
             "error": str(error)
         }), 500
